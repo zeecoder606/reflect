@@ -67,7 +67,7 @@ class ReflectActivity(activity.Activity):
         self._clipboard_text = ''
         self._fixed = None
 
-        self._open_relect_windows()
+        self._open_reflect_windows()
 
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
@@ -106,7 +106,7 @@ class ReflectActivity(activity.Activity):
             self._fixed.put(self._scrolled_window, 0, 0)
             self._scrolled_window.show()
 
-            self._reflect_window = RefectWindow(self)
+            self._reflect_window = ReflectWindow(self)
             self._reflect_window.show()
 
             Gdk.Screen.get_default().connect('size-changed',
@@ -122,8 +122,6 @@ class ReflectActivity(activity.Activity):
 
         self.set_canvas(self._fixed)
         self._fixed.show()
-
-        self._reflect_window.reflect_window()
 
     def reset_scrolled_window_adjustments(self):
         adj = self._scrolled_window.get_hadjustment()

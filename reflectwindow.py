@@ -30,7 +30,13 @@ from graphics import Graphics
 class ReflectWindow(Gtk.Alignment):
 
     def __init__(self, activity):
-        ''' Initialize the task list '''
+        cssProvider = Gtk.CssProvider()
+        cssProvider.load_from_path('style.css')
+        screen = Gdk.Screen.get_default()
+        styleContext = Gtk.StyleContext()
+        styleContext.add_provider_for_screen(screen, cssProvider,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
         Gtk.Alignment.__init__(self)
         self.activity = activity
 
@@ -46,5 +52,42 @@ class ReflectWindow(Gtk.Alignment):
 
         self.activity.load_graphics_area(self)
 
+        # Start with title, date, activity and scrolling window of entries
+        align = Gtk.Alignment.new(xalign=0.5, yalign=0.5, xscale=0, yscale=0)
+        button_grid = Gtk.Grid()
+        button_grid.set_row_spacing(style.DEFAULT_SPACING)
+        button_grid.set_column_spacing(style.DEFAULT_SPACING)
+        button_grid.set_column_homogeneous(True)
+
+        self._title_button = Gtk.Button(_('Title'), name='next-button')
+        self._title_button.connect('clicked', self._title_button_cb, 'title')
+        button_grid.attach(self._title_button, 0, 0, 1, 1)
+        self._title_button.show()
+
+        self.date_button = Gtk.Button(_('Date'), name='next-button')
+        self.date_button.connect('clicked', self._date_button_cb)
+        button_grid.attach(self.date_button, 1, 0, 1, 1)
+        self.date_button.show()
+
+        self._search_button = Gtk.Button(_('Search'), name='next-button')
+        self._search_button.connect('clicked', self._search_button_cb, 'search')
+        button_grid.attach(self._search_button, 2, 0, 1, 1)
+        self._search_button.show()
+
+        align.add(button_grid)
+        button_grid.show()
+        self._graphics_grid.attach(align, 1, 0, 1, 1)
+        align.show()
+
+
     def keypress_cb(self, widget, event):
         self.keyname = Gdk.keyval_name(event.keyval)
+
+    def _title_button_cb(self, button):
+        logging.debug('title button pressed')
+
+    def _date_button_cb(self, button):
+        logging.debug('date button pressed')
+
+    def _search_button_cb(self, button):
+        logging.debug('search button pressed')

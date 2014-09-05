@@ -29,6 +29,7 @@ from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics import style
 
+from reflectwindow import ReflectWindow
 from graphics import Graphics, FONT_SIZES
 import utils
 

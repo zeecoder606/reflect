@@ -1,0 +1,10 @@
+[Activity]
+name = Reflect
+exec = sugar-activity activity.ReflecActivity
+bundle_id = org.sugarlabs.Reflect
+icon = reflect
+activity_version = 1.0
+show_launcher = yes
+license = GPLv3
+single_instance = yes
+summary = a tool for reflecting on your work

@@ -1,4 +1,4 @@
-reflection
+reflect
 ==========
 
 reflection activity for Sugar

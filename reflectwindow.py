@@ -20,7 +20,7 @@ from gi.repository import GObject
 from gi.repository import GConf
 
 from sugar3.graphics import style
-from sugar3.graphics.icon import CanvasIcon
+from sugar3.graphics.icon import CanvasIcon, EventIcon
 from sugar3 import profile
 
 import logging
@@ -72,7 +72,6 @@ class ReflectButtons(Gtk.Alignment):
         self._graphics_grid.show()
 
         self.activity.load_button_area(self)
-
 
         # Start with title, date, activity and scrolling window of entries
         align = Gtk.Alignment.new(xalign=0.5, yalign=0.5, xscale=0, yscale=0)
@@ -130,6 +129,7 @@ class ReflectWindow(Gtk.Alignment):
         self.activity.load_graphics_area(self)
 
         y = 1
+        # TODO: WHERE DO THESE COME FROM?
         for r in ['a', 'b', 'c', 'd', 'e']:
             reflection = Reflection()
             self._graphics_grid.attach(reflection.get_thumbnail(), 0, y, 3, 1)
@@ -163,14 +163,14 @@ class ReflectionGrid(Gtk.EventBox):
         else:
             title_color = color_fill
 
-        grid = Gtk.Grid()
-        self.add(grid)
-        grid.show()
+        self._grid = Gtk.Grid()
+        self.add(self._grid)
+        self._grid.show()
 
-        grid.set_row_spacing(style.DEFAULT_SPACING)
-        grid.set_column_spacing(style.DEFAULT_SPACING)
-        grid.set_column_homogeneous(True)
-        grid.set_border_width(style.DEFAULT_PADDING)
+        self._grid.set_row_spacing(style.DEFAULT_SPACING)
+        self._grid.set_column_spacing(style.DEFAULT_SPACING)
+        self._grid.set_column_homogeneous(True)
+        self._grid.set_border_width(style.DEFAULT_PADDING)
 
         row = 0
 
@@ -182,7 +182,7 @@ class ReflectionGrid(Gtk.EventBox):
             (title_color, title))
         align.add(self._title)
         self._title.show()
-        grid.attach(align, 0, row, 5, 1)
+        self._grid.attach(align, 0, row, 5, 1)
         align.show()
         row += 1
 
@@ -196,34 +196,43 @@ class ReflectionGrid(Gtk.EventBox):
         tag_label = Gtk.Label(label)
         align.add(tag_label)
         tag_label.show()
-        grid.attach(align, 0, row, 5, 1)
+        self._grid.attach(align, 0, row, 5, 1)
         align.show()
         row += 1
 
         column = 0
+        grid = Gtk.Grid()
         self._activities = []
         for icon_name in activities:
             # TODO: WHENCE ICONS
             logging.error(icon_name)
-            self._activities.append(CanvasIcon())
-            self._activities[-1].set_icon_name(icon_name)
-            grid.attach(self._activities[-1], column, row, 1, 1)
+            self._activities.append(CanvasIcon(icon_name=icon_name,
+                                               pixel_size=30))
+            # self._activities[-1].set_icon_name(icon_name)
+            grid.attach(self._activities[-1], column, 0, 1, 1)
             self._activities[-1].show()
             column += 1
+        self._grid.attach(grid, 0, row, 5, 1)
+        grid.show()
         row += 1
 
         column = 0
+        grid = Gtk.Grid()
         if stars is None:
             stars = 0
         for i in range(5):
-            icon = CanvasIcon()
             if i < stars:
-                icon.set_icon_name('star-filled')
+                icon_name = 'star-filled'
             else:
-                icon.set_icon_name('star-empty')
-            grid.attach(icon, column, row, 1, 1)
-            icon.show()
+                icon_name = 'star-empty'
+            star_icon = EventIcon(icon_name=icon_name,
+                                  pixel_size=30)
+            # TODO: BUTTON PRESS
+            grid.attach(star_icon, column, 0, 1, 1)
+            star_icon.show()
             column += 1
+        self._grid.attach(grid, 0, row, 5, 1)
+        grid.show()
         row += 1
 
         for item in content:
@@ -237,9 +246,23 @@ class ReflectionGrid(Gtk.EventBox):
             align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
             align.add(obj)
             obj.show()
-            grid.attach(align, 0, row, 5, 1)
+            self._grid.attach(align, 0, row, 5, 1)
             align.show()
             row += 1
+
+        self._row = row
+        self._entry = Gtk.Entry()
+        self._entry.props.placeholder_text = _('Write a reflection')
+        self._entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
+        self._entry.connect('activate', self._entry_activate_cb)
+        self._grid.attach(self._entry, 0, row, 4, 1)
+        self._entry.show()
+        image_button = EventIcon(icon_name='activity-journal')
+        image_button.set_icon_name('activity-journal')
+        image_button.connect('button-press-event', self._image_button_cb)
+        self._grid.attach(image_button, 4, row, 1, 1)
+        image_button.show()
+        row += 1
 
         for comment in comments:
             # FIX ME: Text, attribution
@@ -247,9 +270,27 @@ class ReflectionGrid(Gtk.EventBox):
             align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
             align.add(obj)
             obj.show()
-            grid.attach(align, 0, row, 5, 1)
+            self._grid.attach(align, 0, row, 5, 1)
             align.show()
             row += 1
+
+    def _entry_activate_cb(self, entry):
+        # TODO: SAVE
+        text = entry.props.text
+        logging.debug('%d: %s' % (self._row, text))
+        obj = Gtk.Label(text)
+        align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
+        align.add(obj)
+        obj.show()
+        self._grid.insert_row(self._row)
+        self._grid.attach(align, 0, self._row, 5, 1)
+        self._row += 1
+        align.show()
+        self._entry.set_text('')
+        self._entry.props.placeholder_text = _('Write a reflection')
+
+    def _image_button_cb(self, button, event):
+        logging.debug('image button press')
 
 
 class Reflection():
@@ -313,7 +354,7 @@ class Reflection():
 
     def refresh(self, thumbnail=True):
         ''' redraw thumbname and fullscreen with updated content '''
-        self._thumbnail.set_size_request(style.GRID_CELL_SIZE * 4,
+        self._thumbnail.set_size_request(style.GRID_CELL_SIZE * 5,
                               style.GRID_CELL_SIZE * 3)
 
         '''

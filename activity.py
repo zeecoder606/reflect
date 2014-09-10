@@ -28,13 +28,32 @@ from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics import style
+from sugar3 import profile
 
-from reflectwindow import ReflectWindow
+from reflectwindow import ReflectButtons, ReflectWindow
 from graphics import Graphics, FONT_SIZES
 import utils
 
 import logging
 _logger = logging.getLogger('reflect-activity')
+
+
+def _luminance(color):
+    ''' Calculate luminance value '''
+    return int(color[1:3], 16) * 0.3 + int(color[3:5], 16) * 0.6 + \
+        int(color[5:7], 16) * 0.1
+
+
+def lighter_color(colors):
+    ''' Which color is lighter? Use that one for the text nick color '''
+    if _luminance(colors[0]) > _luminance(colors[1]):
+        return 0
+    return 1
+
+
+def darker_color(colors):
+    ''' Which color is darker? Use that one for the text background '''
+    return 1 - lighter_color(colors)
 
 
 class ReflectActivity(activity.Activity):
@@ -54,8 +73,22 @@ class ReflectActivity(activity.Activity):
         _logger.debug('zoom level is %f' % self.zoom_level)
 
         self._setup_toolbars()
-        self.modify_bg(Gtk.StateType.NORMAL,
-                       style.COLOR_WHITE.get_gdk_color())
+
+        color = profile.get_color()
+        color_stroke = color.get_stroke_color()
+        color_fill = color.get_fill_color()
+        logging.debug(color_stroke)
+        logging.debug(color_fill)
+
+        lighter = lighter_color([color_stroke, color_fill])
+        darker = 1 - lighter
+
+        if lighter == 0:
+            bg_color = style.Color(color_stroke)
+        else:
+            bg_color = style.Color(color_fill)
+
+        self.modify_bg(Gtk.StateType.NORMAL, bg_color.get_gdk_color())
 
         self.bundle_path = activity.get_bundle_path()
         self.tmp_path = os.path.join(activity.get_activity_root(), 'tmp')
@@ -83,17 +116,13 @@ class ReflectActivity(activity.Activity):
                                          Gdk.Screen.height())
 
             # Offsets from the bottom of the screen
-            dy1 = 3 * style.GRID_CELL_SIZE
-            dy2 = 2 * style.GRID_CELL_SIZE
-
-            self._progress_area = Gtk.Alignment.new(0.5, 0, 0, 0)
-            self._progress_area.set_size_request(Gdk.Screen.width(), -1)
-            self._fixed.put(self._progress_area, 0, Gdk.Screen.height() - dy2)
-            self._progress_area.show()
+            dy1 = 2 * style.GRID_CELL_SIZE
+            dy2 = 1 * style.GRID_CELL_SIZE
 
             self._button_area = Gtk.Alignment.new(0.5, 0, 0, 0)
-            self._button_area.set_size_request(Gdk.Screen.width(), -1)
-            self._fixed.put(self._button_area, 0, Gdk.Screen.height() - dy1)
+            self._button_area.set_size_request(Gdk.Screen.width(),
+                                               style.GRID_CELL_SIZE)
+            self._fixed.put(self._button_area, 0, 0)
             self._button_area.show()
 
             self._scrolled_window = Gtk.ScrolledWindow()
@@ -103,8 +132,11 @@ class ReflectActivity(activity.Activity):
             self._graphics_area = Gtk.Alignment.new(0.5, 0, 0, 0)
             self._scrolled_window.add_with_viewport(self._graphics_area)
             self._graphics_area.show()
-            self._fixed.put(self._scrolled_window, 0, 0)
+            self._fixed.put(self._scrolled_window, 0, dy2)
             self._scrolled_window.show()
+
+            self._reflect_buttons = ReflectButtons(self)
+            self._reflect_buttons.show()
 
             self._reflect_window = ReflectWindow(self)
             self._reflect_window.show()
@@ -137,9 +169,6 @@ class ReflectActivity(activity.Activity):
     def load_button_area(self, widget):
         self._button_area.add(widget)
 
-    def load_progress_area(self, widget):
-        self._progress_area.add(widget)
-
     def _load_intro_graphics(self, file_name='generic-problem.html',
                              message=None):
         center_in_panel = Gtk.Alignment.new(0.5, 0, 0, 0)
@@ -170,23 +199,21 @@ class ReflectActivity(activity.Activity):
 
     def _resize_canvas(self, widget, fullscreen=False):
         # When a toolbar is expanded or collapsed, resize the canvas
-        # to ensure that the progress bar is still visible.
         if hasattr(self, '_reflect_window'):
             if self.toolbar_expanded():
-                dy1 = 4 * style.GRID_CELL_SIZE
-                dy2 = 3 * style.GRID_CELL_SIZE
-            else:
                 dy1 = 3 * style.GRID_CELL_SIZE
                 dy2 = 2 * style.GRID_CELL_SIZE
+            else:
+                dy1 = 2 * style.GRID_CELL_SIZE
+                dy2 = 1 * style.GRID_CELL_SIZE
 
             if fullscreen:
                 dy1 -= 2 * style.GRID_CELL_SIZE
                 dy2 -= 2 * style.GRID_CELL_SIZE
 
             self._scrolled_window.set_size_request(
-                Gdk.Screen.width(), Gdk.Screen.height() - dy1)
-            self._fixed.move(self._progress_area, 0, Gdk.Screen.height() - dy2)
-            self._fixed.move(self._button_area, 0, Gdk.Screen.height() - dy1)
+                Gdk.Screen.width(), Gdk.Screen.height() - dy2)
+            self._fixed.move(self._button_area, 0, 0)
 
         self._about_panel_visible = False
 

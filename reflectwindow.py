@@ -29,6 +29,9 @@ _logger = logging.getLogger('reflect-window')
 import utils
 from graphics import Graphics
 
+BUTTON_SIZE = 30
+REFLECTION_WIDTH = 5 * style.GRID_CELL_SIZE
+
 
 def _luminance(color):
     ''' Calculate luminance value '''
@@ -118,23 +121,41 @@ class ReflectWindow(Gtk.Alignment):
 
         self.set_size_request(Gdk.Screen.width() - style.GRID_CELL_SIZE, -1)
 
-        self._graphics_grid = Gtk.Grid()
-        self._graphics_grid.set_row_spacing(style.DEFAULT_SPACING)
-        self._graphics_grid.set_column_spacing(style.DEFAULT_SPACING)
+        self._reflections_grid = Gtk.Grid()
+        self._reflections_grid.set_row_spacing(style.DEFAULT_SPACING)
+        self._reflections_grid.set_column_spacing(style.DEFAULT_SPACING)
 
         self.set(xalign=0.5, yalign=0, xscale=0, yscale=0)
-        self.add(self._graphics_grid)
-        self._graphics_grid.show()
+        self.add(self._reflections_grid)
+        self._reflections_grid.show()
 
         self.activity.load_graphics_area(self)
+
+        entry = Gtk.Entry()
+        entry.props.placeholder_text = _('Add a reflection')
+        # entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
+        entry.connect('activate', self._entry_activate_cb)
+        self._reflections_grid.attach(entry, 0, 0, 4, 1)
+        entry.show()
 
         y = 1
         # TODO: WHERE DO THESE COME FROM?
         for r in ['a', 'b', 'c', 'd', 'e']:
-            reflection = Reflection()
-            self._graphics_grid.attach(reflection.get_thumbnail(), 0, y, 3, 1)
+            reflection = Reflection(fake=True)
+            self._reflections_grid.attach(
+                reflection.get_thumbnail(), 0, y, 4, 1)
             reflection.refresh()
             y += 1
+
+    def _entry_activate_cb(self, entry):
+        reflection = Reflection()
+        self._reflections_grid.insert_row(1)
+        text = entry.props.text
+        reflection.set_title(text)
+        self._reflections_grid.attach(
+            reflection.get_thumbnail(), 0, 1, 3, 1)
+        reflection.refresh()
+        entry.set_text(_('Add a reflection'))
 
     def keypress_cb(self, widget, event):
         self.keyname = Gdk.keyval_name(event.keyval)
@@ -159,9 +180,9 @@ class ReflectionGrid(Gtk.EventBox):
         darker = 1 - lighter
 
         if darker == 0:
-            title_color = color_stroke
+            self._title_color = color_stroke
         else:
-            title_color = color_fill
+            self._title_color = color_fill
 
         self._grid = Gtk.Grid()
         self.add(self._grid)
@@ -174,16 +195,24 @@ class ReflectionGrid(Gtk.EventBox):
 
         row = 0
 
-        align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
-        self._title = Gtk.Label('')
+        self._title_align = Gtk.Alignment.new(
+            xalign=0, yalign=0.5, xscale=0, yscale=0)
+
+        self._title = Gtk.Label()
         self._title.set_use_markup(True)
         self._title.set_markup(
             '<span foreground="%s"><big><b>%s</b></big></span>' %
-            (title_color, title))
-        align.add(self._title)
+            (self._title_color, title))
+
+        self._title_align.add(self._title)
         self._title.show()
-        self._grid.attach(align, 0, row, 5, 1)
-        align.show()
+        self._grid.attach(self._title_align, 0, row, 5, 1)
+        self._title_align.show()
+
+        button = EventIcon(icon_name='edit', pixel_size=BUTTON_SIZE)
+        button.connect('button-press-event', self._edit_title_cb)
+        self._grid.attach(button, 5, row, 1, 1)
+        button.show()
         row += 1
 
         label = ''
@@ -191,6 +220,9 @@ class ReflectionGrid(Gtk.EventBox):
             if len(label) > 0:
                 label += ', '
             label += tag
+
+        if label == '':
+            label = _('Add a #tag')
 
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
         tag_label = Gtk.Label(label)
@@ -203,15 +235,19 @@ class ReflectionGrid(Gtk.EventBox):
         column = 0
         grid = Gtk.Grid()
         self._activities = []
-        for icon_name in activities:
-            # TODO: WHENCE ICONS
-            logging.error(icon_name)
-            self._activities.append(CanvasIcon(icon_name=icon_name,
-                                               pixel_size=30))
-            # self._activities[-1].set_icon_name(icon_name)
-            grid.attach(self._activities[-1], column, 0, 1, 1)
-            self._activities[-1].show()
-            column += 1
+        if len(activities) > 0:
+            for icon_name in activities:
+                # TODO: WHENCE ICONS
+                logging.error(icon_name)
+                self._activities.append(CanvasIcon(icon_name=icon_name,
+                                                   pixel_size=BUTTON_SIZE))
+                grid.attach(self._activities[-1], column, 0, 1, 1)
+                self._activities[-1].show()
+                column += 1
+        else:
+            label = Gtk.Label('Add an activity')
+            grid.attach(label, 0, row, 5, 1)
+            label.show()
         self._grid.attach(grid, 0, row, 5, 1)
         grid.show()
         row += 1
@@ -226,7 +262,7 @@ class ReflectionGrid(Gtk.EventBox):
             else:
                 icon_name = 'star-empty'
             star_icon = EventIcon(icon_name=icon_name,
-                                  pixel_size=30)
+                                  pixel_size=BUTTON_SIZE)
             # TODO: BUTTON PRESS
             grid.attach(star_icon, column, 0, 1, 1)
             star_icon.show()
@@ -251,13 +287,14 @@ class ReflectionGrid(Gtk.EventBox):
             row += 1
 
         self._row = row
-        self._entry = Gtk.Entry()
-        self._entry.props.placeholder_text = _('Write a reflection')
-        self._entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
-        self._entry.connect('activate', self._entry_activate_cb)
-        self._grid.attach(self._entry, 0, row, 4, 1)
-        self._entry.show()
-        image_button = EventIcon(icon_name='activity-journal')
+        entry = Gtk.Entry()
+        entry.props.placeholder_text = _('Write a reflection')
+        # entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
+        entry.connect('activate', self._entry_activate_cb)
+        self._grid.attach(entry, 0, row, 4, 1)
+        entry.show()
+        image_button = EventIcon(icon_name='activity-journal',
+                                 pixel_size=BUTTON_SIZE)
         image_button.set_icon_name('activity-journal')
         image_button.connect('button-press-event', self._image_button_cb)
         self._grid.attach(image_button, 4, row, 1, 1)
@@ -274,6 +311,23 @@ class ReflectionGrid(Gtk.EventBox):
             align.show()
             row += 1
 
+    def _edit_title_cb(self, button, event):
+        entry = Gtk.Entry()
+        entry.set_text(self._title.get_text())
+        entry.connect('activate', self._title_activate_cb)
+        self._title_align.remove(self._title)
+        self._title_align.add(entry)
+        entry.show()
+
+    def _title_activate_cb(self, entry):
+        # TODO: SAVE NEW TITLE
+        text = entry.props.text
+        self._title.set_markup(
+            '<span foreground="%s"><big><b>%s</b></big></span>' %
+            (self._title_color, text))
+        self._title_align.remove(entry)
+        self._title_align.add(self._title)
+
     def _entry_activate_cb(self, entry):
         # TODO: SAVE
         text = entry.props.text
@@ -286,8 +340,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(align, 0, self._row, 5, 1)
         self._row += 1
         align.show()
-        self._entry.set_text('')
-        self._entry.props.placeholder_text = _('Write a reflection')
+        entry.set_text('')
 
     def _image_button_cb(self, button, event):
         logging.debug('image button press')
@@ -296,7 +349,7 @@ class ReflectionGrid(Gtk.EventBox):
 class Reflection():
     ''' A class to hold a reflection '''
 
-    def __init__(self):
+    def __init__(self, fake=False):
         self._title = _('Untitled')
         self._creation_data = None
         self._modification_data = None
@@ -306,25 +359,19 @@ class Reflection():
         self._comments = []
         self._stars = None
 
-        self._title = 'This is a Title.'
-        self._content.append({'text': 'The quick brown fox'})
-        self._content.append({'image': 'fox.png'})
-        self._content.append({'text': 'jumped over the lazy dog'})
-        self._content.append({'image': 'dog.png'})
-        self._activities.append('TurtleBlocks')
-        self._activities.append('Pippy')
-        self._stars = 3
-        self._tags.append('#programming')
-        self._tags.append('#art')
-        self._tags.append('#math')
-        self._comments.append('Nice work')
-
-        self._thumbnail = ReflectionGrid(title=self._title,
-                                         tags=self._tags,
-                                         activities=self._activities,
-                                         content=self._content,
-                                         stars=self._stars,
-                                         comments=self._comments)
+        if fake:
+            self._title = 'This is a Title.'
+            self._content.append({'text': 'The quick brown fox'})
+            self._content.append({'image': 'fox.png'})
+            self._content.append({'text': 'jumped over the lazy dog'})
+            self._content.append({'image': 'dog.png'})
+            self._activities.append('TurtleBlocks')
+            self._activities.append('Pippy')
+            self._stars = 3
+            self._tags.append('#programming')
+            self._tags.append('#art')
+            self._tags.append('#math')
+            self._comments.append('Nice work')
 
     def set_title(self, title):
         self._title = title
@@ -346,6 +393,13 @@ class Reflection():
 
     def get_thumbnail(self):
         ''' return thumb-sized entry '''
+        self._thumbnail = ReflectionGrid(title=self._title,
+                                         tags=self._tags,
+                                         activities=self._activities,
+                                         content=self._content,
+                                         stars=self._stars,
+                                         comments=self._comments)
+
         return self._thumbnail
 
     def get_fullscreen(self):
@@ -354,7 +408,7 @@ class Reflection():
 
     def refresh(self, thumbnail=True):
         ''' redraw thumbname and fullscreen with updated content '''
-        self._thumbnail.set_size_request(style.GRID_CELL_SIZE * 5,
+        self._thumbnail.set_size_request(REFLECTION_WIDTH,
                               style.GRID_CELL_SIZE * 3)
 
         '''

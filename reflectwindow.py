@@ -156,7 +156,7 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(
             reflection.get_thumbnail(), 0, 1, 3, 1)
         reflection.refresh()
-        entry.set_text(_('Add a reflection'))
+        entry.set_text('')
 
     def keypress_cb(self, widget, event):
         self.keyname = Gdk.keyval_name(event.keyval)
@@ -192,6 +192,7 @@ class ReflectionGrid(Gtk.EventBox):
         self.add(self._grid)
         self._grid.show()
 
+        self._grid.set_row_spacing(0)
         self._grid.set_column_spacing(style.DEFAULT_SPACING)
         self._grid.set_column_homogeneous(True)
         self._grid.set_border_width(style.DEFAULT_PADDING)
@@ -209,6 +210,7 @@ class ReflectionGrid(Gtk.EventBox):
             xalign=0, yalign=0.5, xscale=0, yscale=0)
 
         self._title = Gtk.Label()
+        self._title.set_size_request(style.GRID_CELL_SIZE * 4, -1)
         self._title.set_use_markup(True)
         self._title.set_markup(
             '<span foreground="%s"><big><b>%s</b></big></span>' %

@@ -426,7 +426,7 @@ class Reflection():
             self._tags.append('#programming')
             self._tags.append('#art')
             self._tags.append('#math')
-            self._comments.append('Nice work')
+            self._comments.append('Teacher Comment: Nice work')
 
     def set_title(self, title):
         self._title = title

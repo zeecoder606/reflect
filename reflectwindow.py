@@ -264,6 +264,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._activities_align.add(grid)
         grid.show()
         self._grid.attach(self._activities_align, 1, row, 5, 1)
+        self._activities_align.show()
         row += 1
 
         column = 0
@@ -289,23 +290,34 @@ class ReflectionGrid(Gtk.EventBox):
         row += 1
 
         self._content_aligns = []
+        first_text = True
+        first_image = True
+        self._content_we_always_show = []
         for item in content:
             # Add edit and delete buttons
+            align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
             if 'text' in item:
                 # FIX ME: Text
                 obj = Gtk.Label(item['text'])
+                if first_text:
+                    self._content_we_always_show.append(align)
+                    first_text = False
             elif 'image' in item:
                 # FIX ME: Whence images
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
                     item['image'], style.GRID_CELL_SIZE * 4,
                     style.GRID_CELL_SIZE * 3)
                 obj = Gtk.Image.new_from_pixbuf(pixbuf)
-            align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
+                if first_image:
+                    self._content_we_always_show.append(align)
+                    first_image = False
             align.add(obj)
             obj.show()
             self._grid.attach(align, 1, row, 5, 1)
             self._content_aligns.append(align)
             row += 1
+        for align in self._content_we_always_show:
+            align.show()
 
         self._row = row
         self._new_entry = Gtk.Entry()
@@ -376,7 +388,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._collapse_id = button.connect('button-press-event',
                                            self._collapse_cb)
         self._tag_align.show()
-        self._activities_align.show()
         self._stars_align.show()
         for align in self._content_aligns:
             align.show()
@@ -393,14 +404,14 @@ class ReflectionGrid(Gtk.EventBox):
         self._collapse_id = button.connect('button-press-event',
                                            self._expand_cb)
         self._tag_align.hide()
-        self._activities_align.hide()
         self._stars_align.hide()
         for align in self._content_aligns:
             align.hide()
         self._new_entry.hide()
         self._new_image.hide()
         for align in self._comment_aligns:
-            align.hide()
+            if not align in self._content_we_always_show:
+                align.hide()
 
 class Reflection():
     ''' A class to hold a reflection '''

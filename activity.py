@@ -13,6 +13,7 @@
 import dbus
 import os
 from ConfigParser import ConfigParser
+import json
 from gettext import gettext as _
 
 from gi.repository import Gtk
@@ -54,15 +55,12 @@ class ReflectActivity(activity.Activity):
 
         self.font_size = 8
         self.zoom_level = self.font_size / float(len(FONT_SIZES))
-        _logger.debug('zoom level is %f' % self.zoom_level)
 
         self._setup_toolbars()
 
         color = profile.get_color()
         color_stroke = color.get_stroke_color()
         color_fill = color.get_fill_color()
-        logging.debug(color_stroke)
-        logging.debug(color_fill)
 
         lighter = utils.lighter_color([color_stroke, color_fill])
         darker = 1 - lighter
@@ -137,14 +135,20 @@ class ReflectActivity(activity.Activity):
                         [{'text': dsobj.metadata['description']}]
                 else:
                     self._reflection_data[-1]['content'] = []
-                '''
                 if 'comments' in dsobj.metadata:
                     try:
-                        comment = json.loads(dsobj.metadata['comments'])
-                        _logger.debug(comment)
+                        comments = json.loads(dsobj.metadata['comments'])
                     except:
-                        comment = []
-                '''
+                        comments = []
+                    self._reflection_data[-1]['comments'] = []
+                    for comment in comments:
+                        try:
+                            self._reflection_data[-1]['comments'].append(
+                                '%s: %s' %
+                                (comment['from'], comment['message']))
+                        except:
+                            _logger.debug('could not parse comment %s'
+                                          % comment)
                 if 'mime_type' in dsobj.metadata and \
                    dsobj.metadata['mime_type'][0:5] == 'image':
                     self._reflection_data[-1]['content'].append(

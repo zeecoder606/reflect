@@ -51,6 +51,9 @@ class ReflectActivity(activity.Activity):
         except dbus.exceptions.DBusException as e:
             _logger.error(str(e))
 
+        logging.error('setting reflection data to []')
+        self.reflection_data = []
+
         self.connect('realize', self.__realize_cb)
 
         self.font_size = 8
@@ -73,7 +76,7 @@ class ReflectActivity(activity.Activity):
         self.modify_bg(Gtk.StateType.NORMAL, bg_color.get_gdk_color())
 
         self.bundle_path = activity.get_bundle_path()
-        self.tmp_path = os.path.join(activity.get_activity_root(), 'tmp')
+        self.tmp_path = os.path.join(activity.get_activity_root(), 'instance')
 
         self._copy_entry = None
         self._paste_entry = None
@@ -87,36 +90,30 @@ class ReflectActivity(activity.Activity):
         self.busy_cursor()
         GObject.idle_add(self._load_reflections)
 
-    def _load_reflections(self):
-        self._reflection_data = [
-            {'title': 'A fox tale',
-             'stars': 3,
-             'comments': ['Teacher says good work'],
-             'content': [{'text': 'The quick brown fox'},
-                         {'image': '/usr/share/art4apps/images/fox.png'},
-                         {'text': 'jumped over the lazy dog.'},
-                         {'image': '/usr/share/art4apps/images/dog.png'}],
-             'activities': [utils.bundle_id_to_icon(
-                 'org.laptop.TurtleArtActivity'),
-                            utils.bundle_id_to_icon('org.laptop.Pippy')],
-             'tags': ['#programming', '#art']},
-            {'title': 'Fruit cake',
-             'stars': 1,
-             'comments': ['Teacher says needs more work'],
-             'content': [{'text': 'An apple a day'},
-                         {'image': '/usr/share/art4apps/images/apple.png'},
-                         {'text': 'keeps the doctor away.'}],
-             'activities': [utils.bundle_id_to_icon(
-                 'org.laptop.TurtleArtActivity')],
-             'tags': ['#programming', '#art']}
-            ]
+    def read_file(self, file_path):
+        logging.error('reading reflection data from %s' % file_path)
+        fd = open(file_path, 'r')
+        data = fd.read()
+        fd.close()
+        self.reflection_data = json.loads(data)
 
+    def write_file(self, file_path):
+        logging.error('writing reflection data to %s' % file_path)
+        logging.error(self.reflection_data[-1])
+        data = json.dumps(self.reflection_data)
+        fd = open(file_path, 'w')
+        fd.write(data)
+        fd.close()
+
+        self.metadata['font_size'] = str(self.font_size)
+
+    def _load_reflections(self):
         self._find_starred()
-        self._reflect_window.load(self._reflection_data)
+        self._reflect_window.load(self.reflection_data)
         self.reset_cursor()
 
     def _found_obj_id(self, obj_id):
-        for item in self._reflection_data:
+        for item in self.reflection_data:
             if 'obj_id' in item and item['obj_id'] == obj_id:
                 return True
         return False
@@ -127,37 +124,37 @@ class ReflectActivity(activity.Activity):
         for dsobj in self.dsobjects:
             if self._found_obj_id(dsobj.object_id):
                 continue  # Already have this object -- TODO: update it
-            self._reflection_data.append({
+            self.reflection_data.append({
                 'title': _('Untitled'), 'obj_id': dsobj.object_id})
             if hasattr(dsobj, 'metadata'):
                 if 'activity' in dsobj.metadata:
-                    self._reflection_data[-1]['activities'] = \
+                    self.reflection_data[-1]['activities'] = \
                         [utils.bundle_id_to_icon(dsobj.metadata['activity'])]
                 if 'title' in dsobj.metadata:
-                    self._reflection_data[-1]['title'] = \
+                    self.reflection_data[-1]['title'] = \
                         dsobj.metadata['title']
                 if 'description' in dsobj.metadata:
-                    self._reflection_data[-1]['content'] = \
+                    self.reflection_data[-1]['content'] = \
                         [{'text': dsobj.metadata['description']}]
                 else:
-                    self._reflection_data[-1]['content'] = []
+                    self.reflection_data[-1]['content'] = []
                 if 'tags' in dsobj.metadata:
-                    self._reflection_data[-1]['tags'] = []
+                    self.reflection_data[-1]['tags'] = []
                     tags = dsobj.metadata['tags'].split()
                     for tag in tags:
                         if tag[0] != '#':
-                            self._reflection_data[-1]['tags'].append('#' + tag)
+                            self.reflection_data[-1]['tags'].append('#' + tag)
                         else:
-                            self._reflection_data[-1]['tags'].append(tag)
+                            self.reflection_data[-1]['tags'].append(tag)
                 if 'comments' in dsobj.metadata:
                     try:
                         comments = json.loads(dsobj.metadata['comments'])
                     except:
                         comments = []
-                    self._reflection_data[-1]['comments'] = []
+                    self.reflection_data[-1]['comments'] = []
                     for comment in comments:
                         try:
-                            self._reflection_data[-1]['comments'].append(
+                            self.reflection_data[-1]['comments'].append(
                                 '%s: %s' %
                                 (comment['from'], comment['message']))
                         except:
@@ -165,7 +162,7 @@ class ReflectActivity(activity.Activity):
                                           % comment)
                 if 'mime_type' in dsobj.metadata and \
                    dsobj.metadata['mime_type'][0:5] == 'image':
-                    self._reflection_data[-1]['content'].append(
+                    self.reflection_data[-1]['content'].append(
                         {'image': dsobj.file_path})
                 elif 'preview' in dsobj.metadata:
                     pixbuf = utils.get_pixbuf_from_journal(dsobj, 300, 225)
@@ -173,7 +170,7 @@ class ReflectActivity(activity.Activity):
                         path = os.path.join(self.tmp_path,
                                             dsobj.object_id + '.png')
                         utils.save_pixbuf_to_file(pixbuf, path)
-                        self._reflection_data[-1]['content'].append(
+                        self.reflection_data[-1]['content'].append(
                             {'image': path})
 
     def busy_cursor(self):
@@ -324,9 +321,6 @@ class ReflectActivity(activity.Activity):
             return self.volume_data[0]['uid']
         else:
             return 'unknown'
-
-    def write_file(self, file_path):
-        self.metadata['font_size'] = str(self.font_size)
 
     def _setup_toolbars(self):
         ''' Setup the toolbars. '''

@@ -46,7 +46,7 @@ class ReflectButtons(Gtk.Alignment):
                                              Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
         Gtk.Alignment.__init__(self)
-        self.activity = activity
+        self._activity = activity
 
         self.set_size_request(Gdk.Screen.width() - style.GRID_CELL_SIZE,
                               style.GRID_CELL_SIZE)
@@ -58,7 +58,7 @@ class ReflectButtons(Gtk.Alignment):
         self.add(self._graphics_grid)
         self._graphics_grid.show()
 
-        self.activity.load_button_area(self)
+        self._activity.load_button_area(self)
 
         # Start with title, date, activity and scrolling window of entries
         align = Gtk.Alignment.new(xalign=0.5, yalign=0.5, xscale=0, yscale=0)
@@ -101,7 +101,7 @@ class ReflectWindow(Gtk.Alignment):
 
     def __init__(self, activity):
         Gtk.Alignment.__init__(self)
-        self.activity = activity
+        self._activity = activity
 
         self.set_size_request(Gdk.Screen.width() - style.GRID_CELL_SIZE, -1)
 
@@ -113,47 +113,49 @@ class ReflectWindow(Gtk.Alignment):
         self.add(self._reflections_grid)
         self._reflections_grid.show()
 
-        self.activity.load_graphics_area(self)
+        self._activity.load_graphics_area(self)
 
         entry = Gtk.Entry()
         entry.props.placeholder_text = _('Add a reflection')
-        # entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
         entry.connect('activate', self._entry_activate_cb)
         self._reflections_grid.attach(entry, 0, 0, 4, 1)
         entry.show()
 
     def load(self, reflection_data):
         y = 1
-        for r in reflection_data:
-            reflection = Reflection()
+        for item in reflection_data:
+            reflection = Reflection(item)
+            '''
             # title is required field
-            reflection.set_title(r['title'])
-            if 'content' in r:
-                for item in r['content']:
-                    if 'text' in item:
-                        reflection.add_text(item['text'])
-                    elif 'image' in item:
-                        reflection.add_image(item['image'])
-            if 'activities' in r:
-                for activity in r['activities']:
+            reflection.set_title(item['title'])
+            if 'content' in item:
+                for content in item['content']:
+                    if 'text' in content:
+                        reflection.add_text(content['text'])
+                    elif 'image' in content:
+                        reflection.add_image(content['image'])
+            if 'activities' in item:
+                for activity in item['activities']:
                     reflection.add_activity(activity)
-            if 'stars' in r:
-                reflection.set_stars(r['stars'])
-            if 'tags' in r:
-                for tag in r['tags']:
+            if 'stars' in item:
+                reflection.set_stars(item['stars'])
+            if 'tags' in item:
+                for tag in item['tags']:
                     reflection.add_tag(tag)
-            if 'comments' in r:
-                for comment in r['comments']:
+            if 'comments' in item:
+                for comment in item['comments']:
                     reflection.add_comment(comment)
+            '''
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, y, 4, 1)
             reflection.refresh()
             y += 1
 
     def _entry_activate_cb(self, entry):
-        reflection = Reflection()
-        self._reflections_grid.insert_row(1)
         text = entry.props.text
+        self._activity.reflection_data.insert(0, {'title': text})
+        reflection = Reflection(self._activity.reflection_data[-1])
+        self._reflections_grid.insert_row(1)
         reflection.set_title(text)
         self._reflections_grid.attach(
             reflection.get_graphics(), 0, 1, 3, 1)
@@ -166,10 +168,11 @@ class ReflectWindow(Gtk.Alignment):
 
 class ReflectionGrid(Gtk.EventBox):
 
-    def __init__(self, title='', tags=[], activities=[], content=[],
-                 stars=None, comments=[]):
+    def __init__(self, parent, title='', tags=[], activities=[],
+                 content=[], stars=None, comments=[]):
         Gtk.EventBox.__init__(self)
 
+        self._reflection = parent
         self._collapse = True
         self._collapse_id = None
 
@@ -305,19 +308,23 @@ class ReflectionGrid(Gtk.EventBox):
                     self._content_we_always_show.append(align)
                     first_text = False
             elif 'image' in item:
-                # FIX ME: Whence images
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                    item['image'], style.GRID_CELL_SIZE * 4,
-                    style.GRID_CELL_SIZE * 3)
-                obj = Gtk.Image.new_from_pixbuf(pixbuf)
-                if first_image:
-                    self._content_we_always_show.append(align)
-                    first_image = False
-            align.add(obj)
-            obj.show()
-            self._grid.attach(align, 1, row, 5, 1)
-            self._content_aligns.append(align)
-            row += 1
+                try:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                        item['image'], style.GRID_CELL_SIZE * 4,
+                        style.GRID_CELL_SIZE * 3)
+                    obj = Gtk.Image.new_from_pixbuf(pixbuf)
+                    if first_image:
+                        self._content_we_always_show.append(align)
+                        first_image = False
+                
+                    align.add(obj)
+                    obj.show()
+                    self._grid.attach(align, 1, row, 5, 1)
+                    self._content_aligns.append(align)
+                    row += 1
+                except:
+                    logging.error('could not open %s' % item['image'])
+
         for align in self._content_we_always_show:
             align.show()
 
@@ -364,6 +371,7 @@ class ReflectionGrid(Gtk.EventBox):
             (self._title_color, text))
         self._title_align.remove(entry)
         self._title_align.add(self._title)
+        self._reflection.data['title'] = text
 
     def _entry_activate_cb(self, entry):
         # TODO: SAVE
@@ -373,10 +381,13 @@ class ReflectionGrid(Gtk.EventBox):
         align.add(obj)
         obj.show()
         self._grid.insert_row(self._row)
-        self._grid.attach(align, 0, self._row, 5, 1)
+        self._grid.attach(align, 1, self._row, 5, 1)
         self._row += 1
         align.show()
         entry.set_text('')
+        if not 'content' in self._reflection.data:
+            self._reflection.data['content'] = []
+        self._reflection.data['content'].append({'text': text})
 
     def _image_button_cb(self, button, event):
         logging.debug('image button press')
@@ -407,60 +418,55 @@ class ReflectionGrid(Gtk.EventBox):
         self._tag_align.hide()
         self._stars_align.hide()
         for align in self._content_aligns:
-            align.hide()
+            if not align in self._content_we_always_show:
+                align.hide()
         self._new_entry.hide()
         self._new_image.hide()
         for align in self._comment_aligns:
-            if not align in self._content_we_always_show:
-                align.hide()
+            align.hide()
 
 class Reflection():
     ''' A class to hold a reflection '''
 
-    def __init__(self):
-        self._title = _('Untitled')
-        self._creation_data = None
-        self._modification_data = None
-        self._tags = []
-        self._activities = []
-        self._content = []
-        self._comments = []
-        self._stars = None
+    def __init__(self, data):
+        self.data = data  # dictionary entry for this reflection
+        self.creation_data = None
+        self.modification_data = None
 
     def set_title(self, title):
-        self._title = title
+        self.data['title'] = title
 
     def set_creation_date(self):
-        self._creation_date = time.time()
+        self.creation_date = time.time()
 
     def set_modification_date(self):
-        self._modification_date = time.time()
+        self.modification_date = time.time()
 
     def add_tag(self, tag):
         ''' a #tag '''
-        self._tags.append(tag)
+        self.data['tags'].append(tag)
 
     def add_text(self, text):
         ''' simple text '''
-        self._content.append({'text': text})
+        self.data['content'].append({'text': text})
 
     def add_comment(self, text):
         ''' simple text '''
-        self._comments.append(text)
+        self.data['comments'].append(text)
 
     def add_image(self, image):
         ''' an image file pathname '''
-        self._content.append({'image': image})
+        self.data['content'].append({'image': image})
 
     def add_activity(self, activity):
         ''' an activity icon '''
-        self._activities.append(activity)
+        self.data['activities'].append(activity)
 
     def search_tags(self, tag):
-        return tag in self._tags
+        return tag in self.data['tags']
 
     def add_activity(self, activity):
-        self._activities.append(activity)
+        self.data['activities'].append(activity)
 
     def set_stars(self, n):
         ''' # of stars to highlight '''
@@ -468,24 +474,40 @@ class Reflection():
             n = 0
         elif n > 5:
             n = 5
-        self._stars = n
+        self.data['stars'] = n
 
     def get_graphics(self):
         ''' return resizable entry '''
-        self._graphics = ReflectionGrid(title=self._title,
-                                        tags=self._tags,
-                                        activities=self._activities,
-                                        content=self._content,
-                                        stars=self._stars,
-                                        comments=self._comments)
+        if 'tags' in self.data:
+            tags = self.data['tags']
+        else:
+            tags = []
+        if 'activities' in self.data:
+            activities = self.data['activities']
+        else:
+            activities = []
+        if 'content' in self.data:
+            content = self.data['content']
+        else:
+            content = {}
+        if 'stars' in self.data:
+            stars = self.data['stars']
+        else:
+            stars = None
+        if 'comments' in self.data:
+            comments = self.data['comments']
+        else:
+            comments = []
+        self._graphics = ReflectionGrid(self,
+                                        title=self.data['title'],
+                                        tags=tags,
+                                        activities=activities,
+                                        content=content,
+                                        stars=stars,
+                                        comments=comments)
         return self._graphics
-
-    def get_fullscreen(self):
-        ''' return full-sized entry '''
-        return self._fullscreen
 
     def refresh(self):
         ''' redraw graphics with updated content '''
-        self._graphics.set_size_request(REFLECTION_WIDTH,
-                                        style.GRID_CELL_SIZE * 3)
+        self._graphics.set_size_request(REFLECTION_WIDTH, -1)
         self._graphics.show()

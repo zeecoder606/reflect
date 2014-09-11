@@ -168,8 +168,7 @@ class ReflectWindow(Gtk.Alignment):
 
 class ReflectionGrid(Gtk.EventBox):
 
-    def __init__(self, parent, title='', tags=[], activities=[],
-                 content=[], stars=None, comments=[]):
+    def __init__(self, parent):
         Gtk.EventBox.__init__(self)
 
         self._reflection = parent
@@ -217,7 +216,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._title.set_use_markup(True)
         self._title.set_markup(
             '<span foreground="%s"><big><b>%s</b></big></span>' %
-            (self._title_color, title))
+            (self._title_color, self._reflection.data['title']))
 
         self._title_align.add(self._title)
         self._title.show()
@@ -231,14 +230,13 @@ class ReflectionGrid(Gtk.EventBox):
         row += 1
 
         label = ''
-        for tag in tags:  # TODO: MAX
-            if len(label) > 0:
-                label += ', '
-            label += tag
-
+        if 'tags' in self._reflection.data:
+            for tag in self._reflection.data['tags']:
+                if len(label) > 0:
+                    label += ', '
+                label += tag
         if label == '':
             label = _('Add a #tag')
-
         self._tag_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
         tag_label = Gtk.Label(label)
@@ -252,8 +250,8 @@ class ReflectionGrid(Gtk.EventBox):
             xalign=0, yalign=0.5, xscale=0, yscale=0)
         grid = Gtk.Grid()
         self._activities = []
-        if len(activities) > 0:
-            for icon_path in activities:
+        if 'activities' in self._reflection.data:
+            for icon_path in self._reflection.data['activities']:
                 if icon_path is None:
                     continue
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
@@ -276,7 +274,9 @@ class ReflectionGrid(Gtk.EventBox):
         self._stars_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
         grid = Gtk.Grid()
-        if stars is None:
+        if 'stars' in self._reflection.data:
+            stars = self._reflection.data['stars']
+        else:
             stars = 0
         for i in range(5):
             if i < stars:
@@ -298,32 +298,35 @@ class ReflectionGrid(Gtk.EventBox):
         first_text = True
         first_image = True
         self._content_we_always_show = []
-        for item in content:
-            # Add edit and delete buttons
-            align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
-            if 'text' in item:
-                # FIX ME: Text
-                obj = Gtk.Label(item['text'])
-                if first_text:
-                    self._content_we_always_show.append(align)
-                    first_text = False
-            elif 'image' in item:
-                try:
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                        item['image'], style.GRID_CELL_SIZE * 4,
-                        style.GRID_CELL_SIZE * 3)
-                    obj = Gtk.Image.new_from_pixbuf(pixbuf)
-                    if first_image:
+        if 'content' in self._reflection.data:
+            for item in self._reflection.data['content']:
+                # Add edit and delete buttons
+                align = Gtk.Alignment.new(
+                    xalign=0, yalign=0.5, xscale=0, yscale=0)
+                obj = None
+                if 'text' in item:
+                    # FIX ME: Text
+                    obj = Gtk.Label(item['text'])
+                    if first_text:
                         self._content_we_always_show.append(align)
-                        first_image = False
-                
+                        first_text = False
+                elif 'image' in item:
+                    try:
+                        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                            item['image'], style.GRID_CELL_SIZE * 4,
+                            style.GRID_CELL_SIZE * 3)
+                        obj = Gtk.Image.new_from_pixbuf(pixbuf)
+                        if first_image:
+                            self._content_we_always_show.append(align)
+                            first_image = False
+                    except:
+                        logging.error('could not open %s' % item['image'])
+                if obj is not None:
                     align.add(obj)
                     obj.show()
                     self._grid.attach(align, 1, row, 5, 1)
                     self._content_aligns.append(align)
                     row += 1
-                except:
-                    logging.error('could not open %s' % item['image'])
 
         for align in self._content_we_always_show:
             align.show()
@@ -342,18 +345,17 @@ class ReflectionGrid(Gtk.EventBox):
         row += 1
 
         self._comment_aligns = []
-        for comment in comments:
-            # FIX ME: Text, attribution
-            obj = Gtk.Label(comment)
-            align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
-            align.add(obj)
-            obj.show()
-            self._grid.attach(align, 1, row, 5, 1)
-            self._comment_aligns.append(align)
-            row += 1
-
-        if len(content) == 0:
-            self._expand_cb(self._expand_button, None)
+        if 'comments' in self._reflection.data:
+            for comment in self._reflection.data['comments']:
+                # FIX ME: Text, attribution
+                obj = Gtk.Label(comment)
+                align = Gtk.Alignment.new(
+                    xalign=0, yalign=0.5, xscale=0, yscale=0)
+                align.add(obj)
+                obj.show()
+                self._grid.attach(align, 1, row, 5, 1)
+                self._comment_aligns.append(align)
+                row += 1
 
     def _edit_title_cb(self, button, event):
         entry = Gtk.Entry()
@@ -374,7 +376,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection.data['title'] = text
 
     def _entry_activate_cb(self, entry):
-        # TODO: SAVE
         text = entry.props.text
         obj = Gtk.Label(text)
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
@@ -478,33 +479,7 @@ class Reflection():
 
     def get_graphics(self):
         ''' return resizable entry '''
-        if 'tags' in self.data:
-            tags = self.data['tags']
-        else:
-            tags = []
-        if 'activities' in self.data:
-            activities = self.data['activities']
-        else:
-            activities = []
-        if 'content' in self.data:
-            content = self.data['content']
-        else:
-            content = {}
-        if 'stars' in self.data:
-            stars = self.data['stars']
-        else:
-            stars = None
-        if 'comments' in self.data:
-            comments = self.data['comments']
-        else:
-            comments = []
-        self._graphics = ReflectionGrid(self,
-                                        title=self.data['title'],
-                                        tags=tags,
-                                        activities=activities,
-                                        content=content,
-                                        stars=stars,
-                                        comments=comments)
+        self._graphics = ReflectionGrid(self)
         return self._graphics
 
     def refresh(self):

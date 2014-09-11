@@ -102,6 +102,27 @@ class ReflectActivity(activity.Activity):
 
         self._open_reflect_windows()
 
+        reflection_data = [
+            {'title': 'A fox tale',
+             'stars': 3,
+             'comments': ['Teacher says good work'],
+             'content': [{'text': 'The quick brown fox'},
+                         {'image': '/usr/share/art4apps/images/fox.png'},
+                         {'text': 'jumped over the lazy dog.'},
+                         {'image': '/usr/share/art4apps/images/dog.png'}],
+             'activities': ['TurtleBlocks', 'Pippy'],
+             'tags': ['#programming', '#art']},
+            {'title': 'Fruit cake',
+             'stars': 1,
+             'comments': ['Teacher says needs more work'],
+             'content': [{'text': 'An apple a day'},
+                         {'image': '/usr/share/art4apps/images/apple.png'},
+                         {'text': 'keeps the doctor away.'}],
+             'activities': ['TurtleBlocks'],
+             'tags': ['#programming', '#art']}
+            ]
+        self._reflect_window.load(reflection_data)
+
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
 

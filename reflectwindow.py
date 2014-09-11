@@ -140,22 +140,29 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(entry, 0, 0, 4, 1)
         entry.show()
 
+    def load(self, reflection_data):
         y = 1
-        # TODO: WHERE DO THESE COME FROM?
-        for r in ['a', 'b', 'c', 'd', 'e']:
+        for r in reflection_data:
             reflection = Reflection()
-            reflection.set_title('This is a Title.')
-            reflection.add_text('The quick brown fox')
-            reflection.add_image('/usr/share/art4apps/images/fox.png')
-            reflection.add_text('jumped over the lazy dog')
-            reflection.add_image('/usr/share/art4apps/images/dog.png')
-            reflection.add_activity('TurtleBlocks')
-            reflection.add_activity('Pippy')
-            reflection.set_stars(int(uniform(0, 6)))
-            reflection.add_tag('#programming')
-            reflection.add_tag('#art')
-            reflection.add_tag('#math')
-            reflection.add_comment('Teacher Comment: Nice work')
+            # title is required field
+            reflection.set_title(r['title'])
+            if 'content' in r:
+                for item in r['content']:
+                    if 'text' in item:
+                        reflection.add_text(item['text'])
+                    elif 'image' in item:
+                        reflection.add_image(item['image'])
+            if 'activities' in r:
+                for activity in r['activities']:
+                    reflection.add_activity(activity)
+            if 'stars' in r:
+                reflection.set_stars(r['stars'])
+            if 'tags' in r:
+                for tag in r['tags']:
+                    reflection.add_tag(tag)
+            if 'comments' in r:
+                for comment in r['comments']:
+                    reflection.add_comment(comment)
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, y, 4, 1)
             reflection.refresh()

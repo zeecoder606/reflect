@@ -30,6 +30,7 @@ from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics import style
 from sugar3 import profile
+from sugar3.datastore import datastore
 
 from reflectwindow import ReflectButtons, ReflectWindow
 from graphics import Graphics, FONT_SIZES
@@ -89,7 +90,7 @@ class ReflectActivity(activity.Activity):
         GObject.idle_add(self._load_reflections)
 
     def _load_reflections(self):
-        reflection_data = [
+        self._reflection_data = [
             {'title': 'A fox tale',
              'stars': 3,
              'comments': ['Teacher says good work'],
@@ -108,8 +109,54 @@ class ReflectActivity(activity.Activity):
              'activities': ['TurtleBlocks'],
              'tags': ['#programming', '#art']}
             ]
-        self._reflect_window.load(reflection_data)
+
+        self._find_starred()
+        self._reflect_window.load(self._reflection_data)
         self.reset_cursor()
+
+    def _found_obj_id(self, obj_id):
+        for item in self._reflection_data:
+            if 'obj_id' in item and item['obj_id'] == obj_id:
+                return True
+        return False
+
+    def _find_starred(self):
+        ''' Find all the _stars in the Journal. '''
+        self.dsobjects, self._nobjects = datastore.find({'keep': '1'})
+        for dsobj in self.dsobjects:
+            if self._found_obj_id(dsobj.object_id):
+                continue  # Already have this object -- TODO: update it
+            self._reflection_data.append({
+                'title': _('Untitled'), 'obj_id': dsobj.object_id})
+            if hasattr(dsobj, 'metadata'):
+                if 'title' in dsobj.metadata:
+                    self._reflection_data[-1]['title'] = \
+                        dsobj.metadata['title']
+                if 'description' in dsobj.metadata:
+                    self._reflection_data[-1]['content'] = \
+                        [{'text': dsobj.metadata['description']}]
+                else:
+                    self._reflection_data[-1]['content'] = []
+                '''
+                if 'comments' in dsobj.metadata:
+                    try:
+                        comment = json.loads(dsobj.metadata['comments'])
+                        _logger.debug(comment)
+                    except:
+                        comment = []
+                '''
+                if 'mime_type' in dsobj.metadata and \
+                   dsobj.metadata['mime_type'][0:5] == 'image':
+                    self._reflection_data[-1]['content'].append(
+                        {'image': dsobj.file_path})
+                elif 'preview' in dsobj.metadata:
+                    pixbuf = utils.get_pixbuf_from_journal(dsobj, 300, 225)
+                    if pixbuf is not None:
+                        path = os.path.join(self.tmp_path,
+                                            dsobj.object_id + '.png')
+                        utils.save_pixbuf_to_file(pixbuf, path)
+                        self._reflection_data[-1]['content'].append(
+                            {'image': path})
 
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))

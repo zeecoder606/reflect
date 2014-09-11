@@ -28,6 +28,7 @@ import time
 from gi.repository import Vte
 from gi.repository import Gio
 from gi.repository import Gdk
+from gi.repository import GdkPixbuf
 from gi.repository import Gtk
 from gi.repository import GLib
 from gi.repository import GConf
@@ -95,6 +96,24 @@ def lighter_color(colors):
 def darker_color(colors):
     ''' Which color is darker? Use that one for the text background '''
     return 1 - lighter_color(colors)
+
+
+def save_pixbuf_to_file(pixbuf, path):
+    pixbuf.savev(path, 'png', [], [])
+
+
+def get_pixbuf_from_journal(dsobject, w, h):
+    """ Load a pixbuf from a Journal object. """
+    pixbufloader = \
+        GdkPixbuf.PixbufLoader.new_with_mime_type('image/png')
+    pixbufloader.set_size(min(300, int(w)), min(225, int(h)))
+    try:
+        pixbufloader.write(dsobject.metadata['preview'])
+        pixbuf = pixbufloader.get_pixbuf()
+    except:
+        pixbuf = None
+    pixbufloader.close()
+    return pixbuf
 
 
 def is_valid_email_entry(entry):

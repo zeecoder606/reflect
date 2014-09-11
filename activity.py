@@ -39,24 +39,6 @@ import logging
 _logger = logging.getLogger('reflect-activity')
 
 
-def _luminance(color):
-    ''' Calculate luminance value '''
-    return int(color[1:3], 16) * 0.3 + int(color[3:5], 16) * 0.6 + \
-        int(color[5:7], 16) * 0.1
-
-
-def lighter_color(colors):
-    ''' Which color is lighter? Use that one for the text nick color '''
-    if _luminance(colors[0]) > _luminance(colors[1]):
-        return 0
-    return 1
-
-
-def darker_color(colors):
-    ''' Which color is darker? Use that one for the text background '''
-    return 1 - lighter_color(colors)
-
-
 class ReflectActivity(activity.Activity):
     ''' An activity for reflecting on one's work '''
 
@@ -81,7 +63,7 @@ class ReflectActivity(activity.Activity):
         logging.debug(color_stroke)
         logging.debug(color_fill)
 
-        lighter = lighter_color([color_stroke, color_fill])
+        lighter = utils.lighter_color([color_stroke, color_fill])
         darker = 1 - lighter
 
         if lighter == 0:

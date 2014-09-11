@@ -79,6 +79,24 @@ TRAINING_DATA = 'training-data-%s'
 TRAINING_SUFFIX = '.txt'
 
 
+def _luminance(color):
+    ''' Calculate luminance value '''
+    return int(color[1:3], 16) * 0.3 + int(color[3:5], 16) * 0.6 + \
+        int(color[5:7], 16) * 0.1
+
+
+def lighter_color(colors):
+    ''' Which color is lighter? Use that one for the text nick color '''
+    if _luminance(colors[0]) > _luminance(colors[1]):
+        return 0
+    return 1
+
+
+def darker_color(colors):
+    ''' Which color is darker? Use that one for the text background '''
+    return 1 - lighter_color(colors)
+
+
 def is_valid_email_entry(entry):
     if len(entry) == 0:
         return False

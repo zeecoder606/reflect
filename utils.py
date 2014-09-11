@@ -24,6 +24,7 @@ import cairo
 import email.utils
 import re
 import time
+from ConfigParser import ConfigParser
 
 from gi.repository import Vte
 from gi.repository import Gio
@@ -75,9 +76,38 @@ _DBUS_PATH = '/org/sugarlabs/SugarServices'
 volume_monitor = None
 battery_model = None
 proxy = None
+bundle_icons = {}
 
 TRAINING_DATA = 'training-data-%s'
 TRAINING_SUFFIX = '.txt'
+
+
+def bundle_id_to_icon(bundle_id):
+    global bundle_icons
+    if bundle_icons == {}:
+        info_files = glob.glob(os.path.join(os.path.expanduser('~'),
+                                            'Activities',
+                                            '*.activity',
+                                            'activity',
+                                            'activity.info'))
+        for path in info_files:
+            fd = open(path, 'rb')
+            cp = ConfigParser()
+            cp.readfp(fd)
+            section = 'Activity'
+            if cp.has_option(section, 'bundle_id'):
+                bundle_id = cp.get(section, 'bundle_id')
+            else:
+                continue
+            if cp.has_option(section, 'icon'):
+                icon = cp.get(section, 'icon')
+            dirname = os.path.dirname(path)
+            bundle_icons[bundle_id] = os.path.join(dirname, icon + '.svg')
+
+    if bundle_id in bundle_icons:
+        return bundle_icons[bundle_id]
+    else:
+        return None
 
 
 def _luminance(color):

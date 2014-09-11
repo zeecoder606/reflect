@@ -96,7 +96,9 @@ class ReflectActivity(activity.Activity):
                          {'image': '/usr/share/art4apps/images/fox.png'},
                          {'text': 'jumped over the lazy dog.'},
                          {'image': '/usr/share/art4apps/images/dog.png'}],
-             'activities': ['TurtleBlocks', 'Pippy'],
+             'activities': [utils.bundle_id_to_icon(
+                 'org.laptop.TurtleArtActivity'),
+                            utils.bundle_id_to_icon('org.laptop.Pippy')],
              'tags': ['#programming', '#art']},
             {'title': 'Fruit cake',
              'stars': 1,
@@ -104,7 +106,8 @@ class ReflectActivity(activity.Activity):
              'content': [{'text': 'An apple a day'},
                          {'image': '/usr/share/art4apps/images/apple.png'},
                          {'text': 'keeps the doctor away.'}],
-             'activities': ['TurtleBlocks'],
+             'activities': [utils.bundle_id_to_icon(
+                 'org.laptop.TurtleArtActivity')],
              'tags': ['#programming', '#art']}
             ]
 
@@ -127,6 +130,9 @@ class ReflectActivity(activity.Activity):
             self._reflection_data.append({
                 'title': _('Untitled'), 'obj_id': dsobj.object_id})
             if hasattr(dsobj, 'metadata'):
+                if 'activity' in dsobj.metadata:
+                    self._reflection_data[-1]['activities'] = \
+                        [utils.bundle_id_to_icon(dsobj.metadata['activity'])]
                 if 'title' in dsobj.metadata:
                     self._reflection_data[-1]['title'] = \
                         dsobj.metadata['title']
@@ -135,6 +141,14 @@ class ReflectActivity(activity.Activity):
                         [{'text': dsobj.metadata['description']}]
                 else:
                     self._reflection_data[-1]['content'] = []
+                if 'tags' in dsobj.metadata:
+                    self._reflection_data[-1]['tags'] = []
+                    tags = dsobj.metadata['tags'].split()
+                    for tag in tags:
+                        if tag[0] != '#':
+                            self._reflection_data[-1]['tags'].append('#' + tag)
+                        else:
+                            self._reflection_data[-1]['tags'].append(tag)
                 if 'comments' in dsobj.metadata:
                     try:
                         comments = json.loads(dsobj.metadata['comments'])

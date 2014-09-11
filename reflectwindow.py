@@ -250,10 +250,12 @@ class ReflectionGrid(Gtk.EventBox):
         grid = Gtk.Grid()
         self._activities = []
         if len(activities) > 0:
-            for icon_name in activities:
-                # TODO: WHENCE ICONS
-                self._activities.append(CanvasIcon(icon_name=icon_name,
-                                                   pixel_size=BUTTON_SIZE))
+            for icon_path in activities:
+                if icon_path is None:
+                    continue
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                    icon_path, BUTTON_SIZE, BUTTON_SIZE)
+                self._activities.append(Gtk.Image.new_from_pixbuf(pixbuf))
                 grid.attach(self._activities[-1], column, 0, 1, 1)
                 self._activities[-1].show()
                 column += 1
@@ -366,7 +368,6 @@ class ReflectionGrid(Gtk.EventBox):
     def _entry_activate_cb(self, entry):
         # TODO: SAVE
         text = entry.props.text
-        logging.debug('%d: %s' % (self._row, text))
         obj = Gtk.Label(text)
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
         align.add(obj)
@@ -427,7 +428,6 @@ class Reflection():
         self._stars = None
 
     def set_title(self, title):
-        logging.debug(title)
         self._title = title
 
     def set_creation_date(self):
@@ -469,7 +469,6 @@ class Reflection():
         elif n > 5:
             n = 5
         self._stars = n
-        logging.debug(self._stars)
 
     def get_graphics(self):
         ''' return resizable entry '''

@@ -17,6 +17,7 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import GObject
 from gi.repository import GConf
 
 from gi.repository import SugarExt
@@ -102,6 +103,10 @@ class ReflectActivity(activity.Activity):
 
         self._open_reflect_windows()
 
+        self.busy_cursor()
+        GObject.idle_add(self._load_reflections)
+
+    def _load_reflections(self):
         reflection_data = [
             {'title': 'A fox tale',
              'stars': 3,
@@ -122,6 +127,7 @@ class ReflectActivity(activity.Activity):
              'tags': ['#programming', '#art']}
             ]
         self._reflect_window.load(reflection_data)
+        self.reset_cursor()
 
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))

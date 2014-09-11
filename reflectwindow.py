@@ -12,6 +12,7 @@
 
 import os
 import time
+from random import uniform
 from gettext import gettext as _
 
 from gi.repository import Gtk
@@ -142,9 +143,21 @@ class ReflectWindow(Gtk.Alignment):
         y = 1
         # TODO: WHERE DO THESE COME FROM?
         for r in ['a', 'b', 'c', 'd', 'e']:
-            reflection = Reflection(fake=True)
+            reflection = Reflection()
+            reflection.set_title('This is a Title.')
+            reflection.add_text('The quick brown fox')
+            reflection.add_image('/usr/share/art4apps/images/fox.png')
+            reflection.add_text('jumped over the lazy dog')
+            reflection.add_image('/usr/share/art4apps/images/dog.png')
+            reflection.add_activity('TurtleBlocks')
+            reflection.add_activity('Pippy')
+            reflection.set_stars(int(uniform(0, 6)))
+            reflection.add_tag('#programming')
+            reflection.add_tag('#art')
+            reflection.add_tag('#math')
+            reflection.add_comment('Teacher Comment: Nice work')
             self._reflections_grid.attach(
-                reflection.get_thumbnail(), 0, y, 4, 1)
+                reflection.get_graphics(), 0, y, 4, 1)
             reflection.refresh()
             y += 1
 
@@ -154,7 +167,7 @@ class ReflectWindow(Gtk.Alignment):
         text = entry.props.text
         reflection.set_title(text)
         self._reflections_grid.attach(
-            reflection.get_thumbnail(), 0, 1, 3, 1)
+            reflection.get_graphics(), 0, 1, 3, 1)
         reflection.refresh()
         entry.set_text('')
 
@@ -177,8 +190,6 @@ class ReflectionGrid(Gtk.EventBox):
         color = profile.get_color()
         color_stroke = color.get_stroke_color()
         color_fill = color.get_fill_color()
-        logging.debug(color_stroke)
-        logging.debug(color_fill)
 
         lighter = lighter_color([color_stroke, color_fill])
         darker = 1 - lighter
@@ -252,7 +263,6 @@ class ReflectionGrid(Gtk.EventBox):
         if len(activities) > 0:
             for icon_name in activities:
                 # TODO: WHENCE ICONS
-                logging.error(icon_name)
                 self._activities.append(CanvasIcon(icon_name=icon_name,
                                                    pixel_size=BUTTON_SIZE))
                 grid.attach(self._activities[-1], column, 0, 1, 1)
@@ -406,7 +416,7 @@ class ReflectionGrid(Gtk.EventBox):
 class Reflection():
     ''' A class to hold a reflection '''
 
-    def __init__(self, fake=False):
+    def __init__(self):
         self._title = _('Untitled')
         self._creation_data = None
         self._modification_data = None
@@ -416,21 +426,8 @@ class Reflection():
         self._comments = []
         self._stars = None
 
-        if fake:
-            self._title = 'This is a Title.'
-            self._content.append({'text': 'The quick brown fox'})
-            self._content.append({'image': 'fox.png'})
-            self._content.append({'text': 'jumped over the lazy dog'})
-            self._content.append({'image': 'dog.png'})
-            self._activities.append('TurtleBlocks')
-            self._activities.append('Pippy')
-            self._stars = 3
-            self._tags.append('#programming')
-            self._tags.append('#art')
-            self._tags.append('#math')
-            self._comments.append('Teacher Comment: Nice work')
-
     def set_title(self, title):
+        logging.debug(title)
         self._title = title
 
     def set_creation_date(self):
@@ -440,7 +437,24 @@ class Reflection():
         self._modification_date = time.time()
 
     def add_tag(self, tag):
+        ''' a #tag '''
         self._tags.append(tag)
+
+    def add_text(self, text):
+        ''' simple text '''
+        self._content.append({'text': text})
+
+    def add_comment(self, text):
+        ''' simple text '''
+        self._comments.append(text)
+
+    def add_image(self, image):
+        ''' an image file pathname '''
+        self._content.append({'image': image})
+
+    def add_activity(self, activity):
+        ''' an activity icon '''
+        self._activities.append(activity)
 
     def search_tags(self, tag):
         return tag in self._tags
@@ -448,36 +462,31 @@ class Reflection():
     def add_activity(self, activity):
         self._activities.append(activity)
 
-    def get_thumbnail(self):
-        ''' return thumb-sized entry '''
-        self._thumbnail = ReflectionGrid(title=self._title,
-                                         tags=self._tags,
-                                         activities=self._activities,
-                                         content=self._content,
-                                         stars=self._stars,
-                                         comments=self._comments)
+    def set_stars(self, n):
+        ''' # of stars to highlight '''
+        if n < 0:
+            n = 0
+        elif n > 5:
+            n = 5
+        self._stars = n
+        logging.debug(self._stars)
 
-        return self._thumbnail
+    def get_graphics(self):
+        ''' return resizable entry '''
+        self._graphics = ReflectionGrid(title=self._title,
+                                        tags=self._tags,
+                                        activities=self._activities,
+                                        content=self._content,
+                                        stars=self._stars,
+                                        comments=self._comments)
+        return self._graphics
 
     def get_fullscreen(self):
         ''' return full-sized entry '''
         return self._fullscreen
 
-    def refresh(self, thumbnail=True):
-        ''' redraw thumbname and fullscreen with updated content '''
-        self._thumbnail.set_size_request(REFLECTION_WIDTH,
-                              style.GRID_CELL_SIZE * 3)
-
-        '''
-        self._fullscreen.set_size_request(
-            Gdk.Screen.width() - style.GRID_CELL_SIZE,
-            Gdk.Screen.height() - style.GRID_CELL_SIZE)
-        self._fullscreen.set_row_spacing(style.DEFAULT_SPACING)
-        self._fullscreen.set_column_spacing(style.DEFAULT_SPACING)
-        self._fullscreen.set_column_homogeneous(True)
-        '''
-
-        if thumbnail:
-            self._thumbnail.show()
-        else:
-            self._fullscreen.show()
+    def refresh(self):
+        ''' redraw graphics with updated content '''
+        self._graphics.set_size_request(REFLECTION_WIDTH,
+                                        style.GRID_CELL_SIZE * 3)
+        self._graphics.show()

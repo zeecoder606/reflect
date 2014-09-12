@@ -124,6 +124,12 @@ class ReflectActivity(activity.Activity):
             self.reflection_data.append({
                 'title': _('Untitled'), 'obj_id': dsobj.object_id})
             if hasattr(dsobj, 'metadata'):
+                if 'creation_time' in dsobj.metadata:
+                    self.reflection_data[-1]['creation_time'] = \
+                        dsobj.metadata['creation_time']
+                if 'timestamp' in dsobj.metadata:
+                    self.reflection_data[-1]['modification_time'] = \
+                        dsobj.metadata['timestamp']
                 if 'activity' in dsobj.metadata:
                     self.reflection_data[-1]['activities'] = \
                         [utils.bundle_id_to_icon(dsobj.metadata['activity'])]

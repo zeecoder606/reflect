@@ -24,6 +24,7 @@ from gi.repository import GdkPixbuf
 from sugar3.graphics import style
 from sugar3.graphics.icon import CanvasIcon, EventIcon
 from sugar3 import profile
+from sugar3 import util
 
 import logging
 _logger = logging.getLogger('reflect-window')
@@ -139,6 +140,7 @@ class ReflectWindow(Gtk.Alignment):
         reflection = Reflection(
             self._activity,
             self._activity.reflection_data[-1])
+        reflection.set_creation_time()
         self._reflections_grid.insert_row(1)
         reflection.set_title(text)
         self._reflections_grid.attach(
@@ -158,6 +160,9 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection = parent
         self._collapse = True
         self._collapse_id = None
+
+        if not 'creation_time' in self._reflection.data:
+            self._reflection.set_creation_time()
 
         self.modify_bg(
             Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
@@ -194,14 +199,12 @@ class ReflectionGrid(Gtk.EventBox):
 
         self._title_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
-
         self._title = Gtk.Label()
         self._title.set_size_request(ENTRY_WIDTH, -1)
         self._title.set_use_markup(True)
         self._title.set_markup(
             '<span foreground="%s"><big><b>%s</b></big></span>' %
             (self._title_color, self._reflection.data['title']))
-
         self._title_align.add(self._title)
         self._title.show()
         self._grid.attach(self._title_align, 1, row, 5, 1)
@@ -211,6 +214,21 @@ class ReflectionGrid(Gtk.EventBox):
         button.connect('button-press-event', self._edit_title_cb)
         self._grid.attach(button, 6, row, 1, 1)
         button.show()
+        row += 1
+
+        self._time_align = Gtk.Alignment.new(
+            xalign=0, yalign=0.5, xscale=0, yscale=0)
+        self._time = Gtk.Label()
+        self._time.set_size_request(ENTRY_WIDTH, -1)
+        self._time.set_use_markup(True)
+        self._time.set_markup(
+            '<span foreground="#808080"><small><b>%s</b></small></span>' %
+            util.timestamp_to_elapsed_string(
+                self._reflection.data['modification_time']))
+        self._time_align.add(self._time)
+        self._time.show()
+        self._grid.attach(self._time_align, 1, row, 5, 1)
+        self._time_align.show()
         row += 1
 
         label = ''
@@ -399,6 +417,7 @@ class ReflectionGrid(Gtk.EventBox):
                 self._reflection.data['tags'].append('#' + tag)
                 label += '#' + tag
         text_buffer.set_text(label.replace('\12', ''))
+        self._reflection.set_modification_time()
 
     def _edit_title_cb(self, button, event):
         entry = Gtk.Entry()
@@ -417,12 +436,14 @@ class ReflectionGrid(Gtk.EventBox):
         self._title_align.remove(entry)
         self._title_align.add(self._title)
         self._reflection.data['title'] = text
+        self._reflection.set_modification_time()
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
         if not 'content' in self._reflection.data:
             self._reflection.data['content'] = []
         self._reflection.data['content'].append({'text': text})
+        self._reflection.set_modification_time()
         i = len(self._reflection.data['content'])
         obj = Gtk.TextView()
         obj.set_size_request(ENTRY_WIDTH, -1)
@@ -491,6 +512,7 @@ class ReflectionGrid(Gtk.EventBox):
             self._reflection.data['activities'] = []
         self._reflection.data['activities'].append(
             utils.bundle_id_to_icon(bundle_id))
+        self._reflection.set_modification_time()
         self._activities_align.remove(self._activities_grid)
         self._make_activities_grid()
 
@@ -590,6 +612,7 @@ class ReflectionGrid(Gtk.EventBox):
                         self._reflection.data['content'] = []
                     self._reflection.data['content'].append(
                         {'image': jobject.file_path})
+                    self._reflection.set_modification_time()
 
         self._reflection.activity.reset_cursor()
 
@@ -632,17 +655,19 @@ class Reflection():
     def __init__(self, activity, data):
         self.activity = activity
         self.data = data  # dictionary entry for this reflection
-        self.creation_data = None
-        self.modification_data = None
+        self.creation_time = None
+        self.modification_time = None
 
     def set_title(self, title):
         self.data['title'] = title
 
-    def set_creation_date(self):
-        self.creation_date = time.time()
+    def set_creation_time(self):
+        self.data['creation_time'] = int(time.time())
+        if not 'modification_time' in self.data:
+            self.data['modification_time'] = self.data['creation_time']
 
-    def set_modification_date(self):
-        self.modification_date = time.time()
+    def set_modification_time(self):
+        self.data['modification_time'] = int(time.time())
 
     def add_tag(self, tag):
         ''' a #tag '''

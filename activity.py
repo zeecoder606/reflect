@@ -221,6 +221,22 @@ class ReflectActivity(activity.Activity):
             self._fixed.put(self._scrolled_window, 0, dy2)
             self._scrolled_window.show()
 
+            self._overlay_window = Gtk.ScrolledWindow()
+            self._overlay_window.set_size_request(
+                style.GRID_CELL_SIZE * 10,
+                style.GRID_CELL_SIZE * 6)
+            self._overlay_window.modify_bg(
+                Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
+            self._overlay_window.set_policy(
+                 Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            self._overlay_area = Gtk.Alignment.new(0.5, 0, 0, 0)
+            self._overlay_window.add_with_viewport(self._overlay_area)
+            self._overlay_area.show()
+            x = int((Gdk.Screen.width() - style.GRID_CELL_SIZE * 10) / 2)
+            self._fixed.put(self._overlay_window, 0, Gdk.Screen.height())
+            self._overlay_window.show()
+            self._old_overlay_widget = None
+
             self._reflect_buttons = ReflectButtons(self)
             self._reflect_buttons.show()
 
@@ -254,6 +270,20 @@ class ReflectActivity(activity.Activity):
 
     def load_button_area(self, widget):
         self._button_area.add(widget)
+
+    def load_overlay_area(self, widget):
+        if self._old_overlay_widget is not None:
+            self._overlay_area.remove(self._old_overlay_widget)
+        self._overlay_area.add(widget)
+        self._old_overlay_widget = widget
+
+    def show_overlay_area(self):
+        x = int((Gdk.Screen.width() - style.GRID_CELL_SIZE * 10) / 2)
+        self._fixed.move(self._overlay_window, x, style.GRID_CELL_SIZE)
+
+    def hide_overlay_area(self):
+        self._fixed.move(
+            self._overlay_window, 0, Gdk.Screen.height())
 
     def _load_intro_graphics(self, file_name='generic-problem.html',
                              message=None):

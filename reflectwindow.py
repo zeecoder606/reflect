@@ -511,19 +511,9 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _choose_activity(self):
         if not hasattr(self, '_activity_sw'):
-            # FIX ME
-            self._activity_sw = Gtk.Window() # Gtk.ScrolledWindow()
-            self._activity_sw.set_size_request(8 * style.GRID_CELL_SIZE,
-                                               6 * style.GRID_CELL_SIZE)
-            self._activity_sw.modify_bg(
-                Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
             grid = Gtk.Grid()
-            # self._activity_sw.add_with_viewport(grid)
-            self._activity_sw.add(grid)
+            self._reflection.activity.load_overlay_area(grid)
             grid.show()
-            
-            # self._activity_sw.set_policy(
-            #     Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
             bundle_icons = utils.get_bundle_icons()
             x = 0
@@ -542,16 +532,18 @@ class ReflectionGrid(Gtk.EventBox):
                 grid.attach(button, x, y, 1, 1)
                 button.show()
                 x += 1
-                if x > 8:
+                if x > 6:
                     y += 1
                     x = 0
-        self._activity_sw.set_keep_above(True)
-        self._activity_sw.show()
+        # self._activity_sw.set_keep_above(True)
+        # self._activity_sw.show()
+        self._reflection.activity.show_overlay_area()
         self._reflection.activity.reset_cursor()
 
     def _insert_activity(self, widget, bundle_id):
         logging.debug(bundle_id)
-        self._activity_sw.hide()
+        # self._activity_sw.hide()
+        self._reflection.activity.hide_overlay_area()
 
         if not 'activities' in self._reflection.data:
             self._reflection.data['activities'] = []

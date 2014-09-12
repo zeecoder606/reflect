@@ -430,8 +430,16 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
-        # TODO: make this a text view
-        obj = Gtk.Label(text)
+        if not 'content' in self._reflection.data:
+            self._reflection.data['content'] = []
+        self._reflection.data['content'].append({'text': text})
+        i = len(self._reflection.data['content'])
+        obj = Gtk.TextView()
+        obj.set_size_request(ENTRY_WIDTH, -1)
+        obj.set_wrap_mode(Gtk.WrapMode.WORD)
+        obj.get_buffer().set_text(text)
+        obj.connect('focus-in-event', self._text_focus_in_cb)
+        obj.connect('focus-out-event', self._text_focus_out_cb, i - 1)
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
         align.add(obj)
         obj.show()
@@ -440,9 +448,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._row += 1
         align.show()
         entry.set_text('')
-        if not 'content' in self._reflection.data:
-            self._reflection.data['content'] = []
-        self._reflection.data['content'].append({'text': text})
 
     def _image_button_cb(self, button, event):
         logging.debug('image button press')

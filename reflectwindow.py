@@ -32,7 +32,10 @@ import utils
 from graphics import Graphics
 
 BUTTON_SIZE = 30
-REFLECTION_WIDTH = 5 * style.GRID_CELL_SIZE
+ENTRY_WIDTH = 6 * style.GRID_CELL_SIZE
+PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
+PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
+REFLECTION_WIDTH = 8 * style.GRID_CELL_SIZE
 
 
 class ReflectButtons(Gtk.Alignment):
@@ -125,27 +128,6 @@ class ReflectWindow(Gtk.Alignment):
         y = 1
         for item in reflection_data:
             reflection = Reflection(item)
-            '''
-            # title is required field
-            reflection.set_title(item['title'])
-            if 'content' in item:
-                for content in item['content']:
-                    if 'text' in content:
-                        reflection.add_text(content['text'])
-                    elif 'image' in content:
-                        reflection.add_image(content['image'])
-            if 'activities' in item:
-                for activity in item['activities']:
-                    reflection.add_activity(activity)
-            if 'stars' in item:
-                reflection.set_stars(item['stars'])
-            if 'tags' in item:
-                for tag in item['tags']:
-                    reflection.add_tag(tag)
-            if 'comments' in item:
-                for comment in item['comments']:
-                    reflection.add_comment(comment)
-            '''
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, y, 4, 1)
             reflection.refresh()
@@ -212,7 +194,7 @@ class ReflectionGrid(Gtk.EventBox):
             xalign=0, yalign=0.5, xscale=0, yscale=0)
 
         self._title = Gtk.Label()
-        self._title.set_size_request(style.GRID_CELL_SIZE * 4, -1)
+        self._title.set_size_request(ENTRY_WIDTH, -1)
         self._title.set_use_markup(True)
         self._title.set_markup(
             '<span foreground="%s"><big><b>%s</b></big></span>' %
@@ -239,9 +221,16 @@ class ReflectionGrid(Gtk.EventBox):
             label = _('Add a #tag')
         self._tag_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
-        tag_label = Gtk.Label(label)
-        self._tag_align.add(tag_label)
-        tag_label.show()
+        tag_view = Gtk.TextView()
+        tag_view.set_size_request(ENTRY_WIDTH, -1)
+        tag_view.set_wrap_mode(Gtk.WrapMode.WORD)
+        tag_view.get_buffer().set_text(label)
+        tag_view.get_buffer().connect('insert-text', self._insert_tag_cb)
+        tag_view.connect('focus-in-event', self._tag_focus_in_cb,
+                         _('Add a #tag'))
+        tag_view.connect('focus-out-event', self._tags_focus_out_cb)
+        self._tag_align.add(tag_view)
+        tag_view.show()
         self._grid.attach(self._tag_align, 1, row, 5, 1)
         row += 1
 
@@ -299,22 +288,27 @@ class ReflectionGrid(Gtk.EventBox):
         first_image = True
         self._content_we_always_show = []
         if 'content' in self._reflection.data:
-            for item in self._reflection.data['content']:
+            for i, item in enumerate(self._reflection.data['content']):
                 # Add edit and delete buttons
                 align = Gtk.Alignment.new(
                     xalign=0, yalign=0.5, xscale=0, yscale=0)
                 obj = None
                 if 'text' in item:
-                    # FIX ME: Text
-                    obj = Gtk.Label(item['text'])
+                    obj = Gtk.TextView()
+                    obj.set_size_request(ENTRY_WIDTH, -1)
+                    obj.set_wrap_mode(Gtk.WrapMode.WORD)
+
+                    obj.get_buffer().set_text(item['text'])
+                    obj.connect('focus-in-event', self._text_focus_in_cb)
+                    obj.connect('focus-out-event', self._text_focus_out_cb, i)
+
                     if first_text:
                         self._content_we_always_show.append(align)
                         first_text = False
                 elif 'image' in item:
                     try:
                         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                            item['image'], style.GRID_CELL_SIZE * 4,
-                            style.GRID_CELL_SIZE * 3)
+                            item['image'], PICTURE_WIDTH, PICTURE_HEIGHT)
                         obj = Gtk.Image.new_from_pixbuf(pixbuf)
                         if first_image:
                             self._content_we_always_show.append(align)
@@ -356,6 +350,63 @@ class ReflectionGrid(Gtk.EventBox):
                 self._grid.attach(align, 1, row, 5, 1)
                 self._comment_aligns.append(align)
                 row += 1
+
+    def _insert_tag_cb(self, textbuffer, textiter, text, length):
+        if '\12' in text:
+            bounds = textbuffer.get_bounds()
+            text = textbuffer.get_text(bounds[0], bounds[1], True)
+            self._process_tags(textbuffer, text)
+
+    def _text_focus_in_cb(self, widget, event):
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue = 0.9, 0.9, 0.9
+        rgba.alpha = 1.
+        widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+    def _text_focus_out_cb(self, widget, event, entry):
+        bounds = widget.get_buffer().get_bounds()
+        text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
+        self._reflection.data['content'][entry]['text'] = text
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue = 1., 1., 1.
+        rgba.alpha = 1.
+        widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+    def _tag_focus_in_cb(self, widget, event, prompt=None):
+        bounds = widget.get_buffer().get_bounds()
+        text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
+        if text == prompt:
+            widget.get_buffer().set_text('')
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue = 0.9, 0.9, 0.9
+        rgba.alpha = 1.
+        widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+    def _tags_focus_out_cb(self, widget, event):
+        bounds = widget.get_buffer().get_bounds()
+        text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
+        self._process_tags(widget.get_buffer(), text)
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue = 1., 1., 1.
+        rgba.alpha = 1.
+        widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+    def _process_tags(self, text_buffer, text):
+        self._reflection.data['tags'] = []
+        label = ''
+        tags = text.split()
+        for tag in tags:
+            if len(label) > 0:
+                label += ', '
+            tag = tag.rstrip(',')
+            tag = tag.rstrip(';')
+            if tag[0] == '#':
+                self._reflection.data['tags'].append(tag)
+                label += tag
+            else:
+                self._reflection.data['tags'].append('#' + tag)
+                label += '#' + tag
+        text_buffer.set_text(label.replace('\12', ''))
 
     def _edit_title_cb(self, button, event):
         entry = Gtk.Entry()

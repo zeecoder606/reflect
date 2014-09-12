@@ -127,7 +127,7 @@ class ReflectWindow(Gtk.Alignment):
     def load(self, reflection_data):
         y = 1
         for item in reflection_data:
-            reflection = Reflection(item)
+            reflection = Reflection(self._activity, item)
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, y, 4, 1)
             reflection.refresh()
@@ -136,7 +136,9 @@ class ReflectWindow(Gtk.Alignment):
     def _entry_activate_cb(self, entry):
         text = entry.props.text
         self._activity.reflection_data.insert(0, {'title': text})
-        reflection = Reflection(self._activity.reflection_data[-1])
+        reflection = Reflection(
+            self._activity,
+            self._activity.reflection_data[-1])
         self._reflections_grid.insert_row(1)
         reflection.set_title(text)
         self._reflections_grid.attach(
@@ -428,6 +430,7 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
+        # TODO: make this a text view
         obj = Gtk.Label(text)
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
         align.add(obj)
@@ -443,6 +446,81 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _image_button_cb(self, button, event):
         logging.debug('image button press')
+        self._reflection.activity.busy_cursor()
+        GObject.idle_add(self._choose_image)
+
+    def _choose_image(self):
+        from sugar3.graphics.objectchooser import ObjectChooser
+        try:
+            from sugar3.graphics.objectchooser import FILTER_TYPE_GENERIC_MIME
+        except:
+            FILTER_TYPE_GENERIC_MIME = 'generic_mime'
+        from sugar3 import mime
+
+        chooser = None
+        name = None
+
+        if hasattr(mime, 'GENERIC_TYPE_IMAGE'):
+            # See #2398
+            if 'image/svg+xml' not in \
+                    mime.get_generic_type(mime.GENERIC_TYPE_IMAGE).mime_types:
+                mime.get_generic_type(
+                    mime.GENERIC_TYPE_IMAGE).mime_types.append('image/svg+xml')
+            try:
+                chooser = ObjectChooser(parent=self._reflection.activity,
+                                        what_filter=mime.GENERIC_TYPE_IMAGE,
+                                        filter_type=FILTER_TYPE_GENERIC_MIME,
+                                        show_preview=True)
+            except:
+                chooser = ObjectChooser(parent=self._reflection.activity,
+                                        what_filter=mime.GENERIC_TYPE_IMAGE)
+        else:
+            try:
+                chooser = ObjectChooser(parent=self, what_filter=None)
+            except TypeError:
+                chooser = ObjectChooser(
+                    None, self._reflection.activity,
+                    Gtk.DialogFlags.MODAL |
+                    Gtk.DialogFlags.DESTROY_WITH_PARENT)
+
+        if chooser is not None:
+            try:
+                result = chooser.run()
+                if result == Gtk.ResponseType.ACCEPT:
+                    jobject = chooser.get_selected_object()
+                    if jobject and jobject.file_path:
+                        name = jobject.metadata['title']
+                        mime_type = jobject.metadata['mime_type']
+                        _logger.debug('result of choose: %s (%s)' %
+                                      (name, str(mime_type)))
+            finally:
+                chooser.destroy()
+                del chooser
+
+            if name is not None:
+                obj = None
+                try:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                        jobject.file_path, PICTURE_WIDTH, PICTURE_HEIGHT)
+                    obj = Gtk.Image.new_from_pixbuf(pixbuf)
+                except:
+                    logging.error('could not open %s' % jobject.file_path)
+
+                if obj is not None:
+                    align = Gtk.Alignment.new(
+                        xalign=0, yalign=0.5, xscale=0, yscale=0)
+                    align.add(obj)
+                    obj.show()
+                    self._grid.insert_row(self._row)
+                    self._grid.attach(align, 1, self._row, 5, 1)
+                    self._row += 1
+                    align.show()
+                    if not 'content' in self._reflection.data:
+                        self._reflection.data['content'] = []
+                    self._reflection.data['content'].append(
+                        {'image': jobject.file_path})
+
+        self._reflection.activity.reset_cursor()
 
     def _expand_cb(self, button, event):
         self._grid.set_row_spacing(style.DEFAULT_SPACING)
@@ -480,7 +558,8 @@ class ReflectionGrid(Gtk.EventBox):
 class Reflection():
     ''' A class to hold a reflection '''
 
-    def __init__(self, data):
+    def __init__(self, activity, data):
+        self.activity = activity
         self.data = data  # dictionary entry for this reflection
         self.creation_data = None
         self.modification_data = None

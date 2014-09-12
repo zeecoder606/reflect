@@ -91,15 +91,12 @@ class ReflectActivity(activity.Activity):
         GObject.idle_add(self._load_reflections)
 
     def read_file(self, file_path):
-        logging.error('reading reflection data from %s' % file_path)
         fd = open(file_path, 'r')
         data = fd.read()
         fd.close()
         self.reflection_data = json.loads(data)
 
     def write_file(self, file_path):
-        logging.error('writing reflection data to %s' % file_path)
-        logging.error(self.reflection_data[-1])
         data = json.dumps(self.reflection_data)
         fd = open(file_path, 'w')
         fd.write(data)

@@ -236,29 +236,19 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(self._tag_align, 1, row, 5, 1)
         row += 1
 
-        column = 0
         self._activities_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
-        grid = Gtk.Grid()
-        self._activities = []
-        if 'activities' in self._reflection.data:
-            for icon_path in self._reflection.data['activities']:
-                if icon_path is None:
-                    continue
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                    icon_path, BUTTON_SIZE, BUTTON_SIZE)
-                self._activities.append(Gtk.Image.new_from_pixbuf(pixbuf))
-                grid.attach(self._activities[-1], column, 0, 1, 1)
-                self._activities[-1].show()
-                column += 1
-        else:
-            label = Gtk.Label('Add an activity')
-            grid.attach(label, 0, row, 5, 1)
-            label.show()
-        self._activities_align.add(grid)
-        grid.show()
+        self._make_activities_grid()
         self._grid.attach(self._activities_align, 1, row, 5, 1)
         self._activities_align.show()
+
+        self._new_activity = EventIcon(icon_name='activity-journal',
+                                       pixel_size=BUTTON_SIZE)
+        self._new_activity.set_icon_name('activity-journal')
+        self._new_activity.connect('button-press-event',
+                                   self._activity_button_cb)
+        self._grid.attach(self._new_activity, 6, row, 1, 1)
+        self._new_activity.show()
         row += 1
 
         column = 0
@@ -449,8 +439,84 @@ class ReflectionGrid(Gtk.EventBox):
         align.show()
         entry.set_text('')
 
+    def _activity_button_cb(self, button, event):
+        self._reflection.activity.busy_cursor()
+        GObject.idle_add(self._choose_activity)
+
+    def _choose_activity(self):
+        if not hasattr(self, '_activity_sw'):
+            # FIX ME
+            self._activity_sw = Gtk.Window() # Gtk.ScrolledWindow()
+            self._activity_sw.set_size_request(8 * style.GRID_CELL_SIZE,
+                                               6 * style.GRID_CELL_SIZE)
+            self._activity_sw.modify_bg(
+                Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
+            grid = Gtk.Grid()
+            # self._activity_sw.add_with_viewport(grid)
+            self._activity_sw.add(grid)
+            grid.show()
+            
+            # self._activity_sw.set_policy(
+            #     Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+            bundle_icons = utils.get_bundle_icons()
+            x = 0
+            y = 0
+            for bundle_id in bundle_icons.keys():
+                icon_path = bundle_icons[bundle_id]
+                if icon_path is None:
+                    continue
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                    icon_path, style.GRID_CELL_SIZE, style.GRID_CELL_SIZE)
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+                button = Gtk.ToolButton()
+                button.set_icon_widget(image)
+                image.show()
+                button.connect('clicked', self._insert_activity, bundle_id)
+                grid.attach(button, x, y, 1, 1)
+                button.show()
+                x += 1
+                if x > 8:
+                    y += 1
+                    x = 0
+        self._activity_sw.set_keep_above(True)
+        self._activity_sw.show()
+        self._reflection.activity.reset_cursor()
+
+    def _insert_activity(self, widget, bundle_id):
+        logging.debug(bundle_id)
+        self._activity_sw.hide()
+
+        if not 'activities' in self._reflection.data:
+            self._reflection.data['activities'] = []
+        self._reflection.data['activities'].append(
+            utils.bundle_id_to_icon(bundle_id))
+        self._activities_align.remove(self._activities_grid)
+        self._make_activities_grid()
+
+    def _make_activities_grid(self):
+        column = 0
+        self._activities_grid = Gtk.Grid()
+        self._activities = []
+        if 'activities' in self._reflection.data:
+            for icon_path in self._reflection.data['activities']:
+                if icon_path is None:
+                    continue
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                    icon_path, BUTTON_SIZE, BUTTON_SIZE)
+                self._activities.append(Gtk.Image.new_from_pixbuf(pixbuf))
+                self._activities_grid.attach(
+                    self._activities[-1], column, 0, 1, 1)
+                self._activities[-1].show()
+                column += 1
+        else:
+            label = Gtk.Label('Add an activity')
+            self._activities_grid.attach(label, 0, row, 5, 1)
+            label.show()
+        self._activities_align.add(self._activities_grid)
+        self._activities_grid.show()
+
     def _image_button_cb(self, button, event):
-        logging.debug('image button press')
         self._reflection.activity.busy_cursor()
         GObject.idle_add(self._choose_image)
 

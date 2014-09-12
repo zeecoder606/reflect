@@ -39,6 +39,7 @@ from sugar3 import env
 from sugar3 import profile
 from sugar3.datastore import datastore
 from sugar3.graphics.xocolor import XoColor
+from sugar3.graphics import style
 
 from jarabe import config
 from jarabe.model import shell
@@ -82,27 +83,58 @@ TRAINING_DATA = 'training-data-%s'
 TRAINING_SUFFIX = '.txt'
 
 
+def _find_bundles():
+    global bundle_icons
+
+    info_files = glob.glob(os.path.join(os.path.expanduser('~'),
+                                        'Activities',
+                                        '*.activity',
+                                        'activity',
+                                        'activity.info'))
+    for path in info_files:
+        fd = open(path, 'rb')
+        cp = ConfigParser()
+        cp.readfp(fd)
+        section = 'Activity'
+        if cp.has_option(section, 'bundle_id'):
+            bundle_id = cp.get(section, 'bundle_id')
+        else:
+            continue
+        if cp.has_option(section, 'icon'):
+            icon = cp.get(section, 'icon')
+        dirname = os.path.dirname(path)
+        bundle_icons[bundle_id] = os.path.join(dirname, icon + '.svg')
+
+    info_files = glob.glob(os.path.join('/usr/share/sugar/activities'
+                                        '*.activity',
+                                        'activity',
+                                        'activity.info'))
+    for path in info_files:
+        fd = open(path, 'rb')
+        cp = ConfigParser()
+        cp.readfp(fd)
+        section = 'Activity'
+        if cp.has_option(section, 'bundle_id'):
+            bundle_id = cp.get(section, 'bundle_id')
+        else:
+            continue
+        if cp.has_option(section, 'icon'):
+            icon = cp.get(section, 'icon')
+        dirname = os.path.dirname(path)
+        bundle_icons[bundle_id] = os.path.join(dirname, icon + '.svg')
+
+
+def get_bundle_icons():
+    global bundle_icons
+    if bundle_icons == {}:
+        _find_bundles()
+    return bundle_icons
+
+
 def bundle_id_to_icon(bundle_id):
     global bundle_icons
     if bundle_icons == {}:
-        info_files = glob.glob(os.path.join(os.path.expanduser('~'),
-                                            'Activities',
-                                            '*.activity',
-                                            'activity',
-                                            'activity.info'))
-        for path in info_files:
-            fd = open(path, 'rb')
-            cp = ConfigParser()
-            cp.readfp(fd)
-            section = 'Activity'
-            if cp.has_option(section, 'bundle_id'):
-                bundle_id = cp.get(section, 'bundle_id')
-            else:
-                continue
-            if cp.has_option(section, 'icon'):
-                icon = cp.get(section, 'icon')
-            dirname = os.path.dirname(path)
-            bundle_icons[bundle_id] = os.path.join(dirname, icon + '.svg')
+        _find_bundles()
 
     if bundle_id in bundle_icons:
         return bundle_icons[bundle_id]

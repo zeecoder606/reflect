@@ -12,6 +12,7 @@
 
 import dbus
 import os
+import shutil
 from ConfigParser import ConfigParser
 import json
 from gettext import gettext as _
@@ -177,8 +178,11 @@ class ReflectActivity(activity.Activity):
                                           % comment)
                 if 'mime_type' in dsobj.metadata and \
                    dsobj.metadata['mime_type'][0:5] == 'image':
+                    new_path = os.path.join(self.tmp_path,
+                                            dsobj.object_id)
+                    shutil.copy(dsobj.file_path, new_path)
                     self.reflection_data[-1]['content'].append(
-                        {'image': dsobj.file_path})
+                        {'image': new_path})
                 elif 'preview' in dsobj.metadata:
                     pixbuf = utils.get_pixbuf_from_journal(dsobj, 300, 225)
                     if pixbuf is not None:

@@ -33,6 +33,8 @@ import utils
 from graphics import Graphics
 
 BUTTON_SIZE = 30
+STAR_SIZE = 20
+NUMBER_OF_STARS = 5
 ENTRY_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
@@ -269,7 +271,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._new_activity.show()
         row += 1
 
-        column = 0
         self._stars_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
         grid = Gtk.Grid()
@@ -277,17 +278,18 @@ class ReflectionGrid(Gtk.EventBox):
             stars = self._reflection.data['stars']
         else:
             stars = 0
-        for i in range(5):
+        self._star_icons = []
+        for i in range(NUMBER_OF_STARS):
             if i < stars:
                 icon_name = 'star-filled'
             else:
                 icon_name = 'star-empty'
-            star_icon = EventIcon(icon_name=icon_name,
-                                  pixel_size=BUTTON_SIZE)
-            # TODO: BUTTON PRESS
-            grid.attach(star_icon, column, 0, 1, 1)
-            star_icon.show()
-            column += 1
+            self._star_icons.append(EventIcon(icon_name=icon_name,
+                                              pixel_size=STAR_SIZE))
+            self._star_icons[-1].connect('button-press-event',
+                                         self._star_button_cb, i)
+            grid.attach(self._star_icons[-1], i, 0, 1, 1)
+            self._star_icons[-1].show()
         self._stars_align.add(grid)
         grid.show()
         self._grid.attach(self._stars_align, 1, row, 5, 1)
@@ -360,6 +362,28 @@ class ReflectionGrid(Gtk.EventBox):
                 self._grid.attach(align, 1, row, 5, 1)
                 self._comment_aligns.append(align)
                 row += 1
+
+    def _star_button_cb(self, button, event, n):
+        if 'stars' in self._reflection.data:
+            oldn = self._reflection.data['stars']
+        else:
+            oldn = 0
+        if n < oldn:
+            for i in range(NUMBER_OF_STARS):
+                if i < n:
+                    icon_name = 'star-filled'
+                else:
+                    icon_name = 'star-empty'
+                self._star_icons[i].set_icon_name(icon_name)
+            self._reflection.data['stars'] = n
+        else:
+            for i in range(NUMBER_OF_STARS):
+                if i <= n:
+                    icon_name = 'star-filled'
+                else:
+                    icon_name = 'star-empty'
+                self._star_icons[i].set_icon_name(icon_name)
+            self._reflection.data['stars'] = n + 1
 
     def _insert_tag_cb(self, textbuffer, textiter, text, length):
         if '\12' in text:

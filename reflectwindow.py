@@ -157,6 +157,7 @@ class ReflectWindow(Gtk.Alignment):
             self._activity,
             self._activity.reflection_data[-1])
         reflection.set_creation_time()
+        reflection.set_stars(0)
         self._reflections_grid.insert_row(1)
         reflection.set_title(text)
         self._reflections_grid.attach(

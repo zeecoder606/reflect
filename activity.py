@@ -191,6 +191,7 @@ class ReflectActivity(activity.Activity):
                         utils.save_pixbuf_to_file(pixbuf, path)
                         self.reflection_data[-1]['content'].append(
                             {'image': path})
+                self.reflection_data[-1]['stars'] = 0
 
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))

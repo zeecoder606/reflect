@@ -74,7 +74,7 @@ class ReflectButtons(Gtk.Alignment):
         button_grid.set_column_homogeneous(True)
 
         self._title_button = Gtk.Button(_('Title'), name='next-button')
-        self._title_button.connect('clicked', self._title_button_cb, 'title')
+        self._title_button.connect('clicked', self._title_button_cb)
         button_grid.attach(self._title_button, 0, 0, 1, 1)
         self._title_button.show()
 
@@ -83,8 +83,9 @@ class ReflectButtons(Gtk.Alignment):
         button_grid.attach(self.date_button, 1, 0, 1, 1)
         self.date_button.show()
 
+        # FIX ME: Need a tag to search on
         self._search_button = Gtk.Button(_('Search'), name='next-button')
-        self._search_button.connect('clicked', self._search_button_cb, 'search')
+        self._search_button.connect('clicked', self._search_button_cb)
         button_grid.attach(self._search_button, 2, 0, 1, 1)
         self._search_button.show()
 
@@ -94,12 +95,22 @@ class ReflectButtons(Gtk.Alignment):
         align.show()
 
     def _title_button_cb(self, button):
+        ''' sort by title '''
         logging.debug('title button pressed')
+        sorted_data = sorted(self._activity.reflection_data,
+                             key=lambda item: item['title'].lower())
+        self._activity.reload_data(sorted_data)
 
     def _date_button_cb(self, button):
+        ''' sort by modification date '''
         logging.debug('date button pressed')
+        sorted_data = sorted(self._activity.reflection_data,
+                             key=lambda item: item['modification_time'],
+                             reverse=True)
+        self._activity.reload_data(sorted_data)
 
     def _search_button_cb(self, button):
+        ''' search by #tag '''
         logging.debug('search button pressed')
 
 
@@ -127,14 +138,17 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(entry, 0, 0, 4, 1)
         entry.show()
 
+    def reload(self, reflection_data):
+        self.load(reflection_data)
+
     def load(self, reflection_data):
-        y = 1
+        self._row = 0
         for item in reflection_data:
             reflection = Reflection(self._activity, item)
             self._reflections_grid.attach(
-                reflection.get_graphics(), 0, y, 4, 1)
+                reflection.get_graphics(), 0, self._row, 4, 1)
             reflection.refresh()
-            y += 1
+            self._row += 1
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
@@ -162,9 +176,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection = parent
         self._collapse = True
         self._collapse_id = None
-
-        if not 'creation_time' in self._reflection.data:
-            self._reflection.set_creation_time()
 
         self.modify_bg(
             Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
@@ -223,10 +234,19 @@ class ReflectionGrid(Gtk.EventBox):
         self._time = Gtk.Label()
         self._time.set_size_request(ENTRY_WIDTH, -1)
         self._time.set_use_markup(True)
+        try:
+            time_string = util.timestamp_to_elapsed_string(
+                int(self._reflection.data['modification_time']))
+        except Exception as e:
+            logging.error('Could not convert modification time %s: %s' %
+                          (self._reflection.data['modification_time'], e))
+            self._reflection.data['modification_time'] = \
+                self._reflection.data['creation_time']
+            time_string = util.timestamp_to_elapsed_string(
+                int(self._reflection.data['modification_time']))
         self._time.set_markup(
             '<span foreground="#808080"><small><b>%s</b></small></span>' %
-            util.timestamp_to_elapsed_string(
-                self._reflection.data['modification_time']))
+            time_string)
         self._time_align.add(self._time)
         self._time.show()
         self._grid.attach(self._time_align, 1, row, 5, 1)
@@ -368,7 +388,7 @@ class ReflectionGrid(Gtk.EventBox):
             oldn = self._reflection.data['stars']
         else:
             oldn = 0
-        if n < oldn:
+        if n < oldn:  # Erase stars, including one that was clicked
             for i in range(NUMBER_OF_STARS):
                 if i < n:
                     icon_name = 'star-filled'
@@ -376,7 +396,7 @@ class ReflectionGrid(Gtk.EventBox):
                     icon_name = 'star-empty'
                 self._star_icons[i].set_icon_name(icon_name)
             self._reflection.data['stars'] = n
-        else:
+        else:  # Add stars, including one that was clicked
             for i in range(NUMBER_OF_STARS):
                 if i <= n:
                     icon_name = 'star-filled'
@@ -384,6 +404,7 @@ class ReflectionGrid(Gtk.EventBox):
                     icon_name = 'star-empty'
                 self._star_icons[i].set_icon_name(icon_name)
             self._reflection.data['stars'] = n + 1
+        self._reflection.set_modification_time()
 
     def _insert_tag_cb(self, textbuffer, textiter, text, length):
         if '\12' in text:

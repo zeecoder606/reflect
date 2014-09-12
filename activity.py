@@ -115,6 +115,12 @@ class ReflectActivity(activity.Activity):
                 return True
         return False
 
+    def reload_data(self, data):
+        ''' Reload data after sorting or searching '''
+        self._reflection_data = data[:]
+        self._reflect_window.reload(self._reflection_data)
+        self.reset_scrolled_window_adjustments()
+
     def _find_starred(self):
         ''' Find all the _stars in the Journal. '''
         self.dsobjects, self._nobjects = datastore.find({'keep': '1'})
@@ -127,9 +133,15 @@ class ReflectActivity(activity.Activity):
                 if 'creation_time' in dsobj.metadata:
                     self.reflection_data[-1]['creation_time'] = \
                         dsobj.metadata['creation_time']
+                else:
+                    self.reflection_data[-1]['creation_time'] = \
+                        int(time.time())
                 if 'timestamp' in dsobj.metadata:
                     self.reflection_data[-1]['modification_time'] = \
                         dsobj.metadata['timestamp']
+                else:
+                    self.reflection_data[-1]['modification_time'] = \
+                        self.reflection_data[-1]['creation_time']
                 if 'activity' in dsobj.metadata:
                     self.reflection_data[-1]['activities'] = \
                         [utils.bundle_id_to_icon(dsobj.metadata['activity'])]

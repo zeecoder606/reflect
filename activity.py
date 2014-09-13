@@ -18,6 +18,7 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import GdkPixbuf
 from gi.repository import GObject
 from gi.repository import GConf
 
@@ -30,6 +31,7 @@ from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics.alert import NotifyAlert, Alert
+from sugar3.graphics.icon import Icon
 from sugar3.graphics import style
 from sugar3 import profile
 from sugar3.datastore import datastore
@@ -103,9 +105,7 @@ class ReflectActivity(activity.Activity):
             # We're joining
             if not self.get_shared():
                 self.busy_cursor()
-                xocolors = [color_stroke, color_fill]
-                share_icon = Icon(icon_name='zoom-neighborhood',
-                                  xo_color=xocolors)
+                share_icon = Icon(icon_name='zoom-neighborhood')
                 self._joined_alert = Alert()
                 self._joined_alert.props.icon = share_icon
                 self._joined_alert.props.title = _('Please wait')
@@ -609,6 +609,7 @@ class ReflectActivity(activity.Activity):
             return
 
         self.initiating = True
+        self._waiting_for_reflections = False
         _logger.debug('I am sharing...')
 
         self.conn = self.shared_activity.telepathy_conn
@@ -701,7 +702,7 @@ class ReflectActivity(activity.Activity):
                 data = json.dumps(self.reflection_data)
                 self.send_event('R' + data)
         elif text[0] == 'p':
-            # Receive a picture
+            # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
             cmd, basename, data = text.split('|', 3)
             utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
         elif text[0] == 'R':

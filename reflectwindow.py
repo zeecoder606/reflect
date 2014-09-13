@@ -247,7 +247,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._title.set_wrap_mode(Gtk.WrapMode.WORD)
         title_tag = self._title.get_buffer().create_tag(
             'title', foreground=self._title_color, weight=Pango.Weight.BOLD,
-            size=18000)
+            size=12288)
         iter_text = self._title.get_buffer().get_iter_at_offset(0)
         self._title.get_buffer().insert_with_tags(
             iter_text, self._reflection.data['title'], title_tag)

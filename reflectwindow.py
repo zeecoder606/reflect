@@ -41,6 +41,8 @@ PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
 REFLECTION_WIDTH = 8 * style.GRID_CELL_SIZE
 
+# TODO: disable editing if joiner
+
 
 class ReflectButtons(Gtk.Alignment):
 

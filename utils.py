@@ -83,6 +83,49 @@ TRAINING_DATA = 'training-data-%s'
 TRAINING_SUFFIX = '.txt'
 
 
+def file_to_base64(path):
+    ''' Given a file, convert its contents to base64 '''
+    base64file = os.path.join('/tmp', 'base64tmp')
+    cmd = 'base64 <' + path + ' >' + base64file
+    subprocess.check_call(cmd, shell=True)
+    fd = open(base64file, 'r')
+    base64data = fd.read()
+    fd.close()
+    os.remove(base64file)
+    return base64data
+
+
+def pixbuf_to_base64(pixbuf, width=120, height=90):
+    ''' Convert pixbuf to base64-encoded data '''
+    pixbuf = pixbuf.scale_simple(
+        width, height, GdkPixbuf.InterpType.NEAREST)
+    path = os.path.join('/tmp', 'imagetmp.png')
+    pixbuf.savev(path, "png", [], [])
+    base64data = file_to_base64(path)
+    os.remove(path)
+    return base64data
+
+
+def base64_to_file(base64data, path):
+    ''' Given a file, convert its contents from base64 '''
+    base64file = os.path.join('/tmp', 'base64tmp')
+    fd = open(base64file, 'w')
+    fd.write(base64data)
+    fd.close()
+    cmd = 'base64 -d <' + base64file + '>' + path
+    subprocess.check_call(cmd, shell=True)
+    os.remove(base64file)
+
+
+def base64_to_pixbuf(base64data, width=120, height=90):
+    ''' Convert base64-encoded data to a pixbuf '''
+    path = os.path.join('/tmp', 'imagetmp.png')
+    base64_to_file(base64data, path)
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(path, width, height)
+    os.remove(path)
+    return pixbuf
+
+
 def _find_bundles():
     global bundle_icons
 

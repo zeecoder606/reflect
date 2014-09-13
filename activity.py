@@ -102,6 +102,7 @@ class ReflectActivity(activity.Activity):
         if self.shared_activity:
             # We're joining
             if not self.get_shared():
+                self.busy_cursor()
                 xocolors = [color_stroke, color_fill]
                 share_icon = Icon(icon_name='zoom-neighborhood',
                                   xo_color=xocolors)
@@ -633,6 +634,7 @@ class ReflectActivity(activity.Activity):
             self._joined_alert = None
 
         self.initiating = False
+        self._waiting_for_reflections = True
         _logger.debug('I joined a shared activity.')
 
         self.conn = self.shared_activity.telepathy_conn
@@ -674,14 +676,41 @@ class ReflectActivity(activity.Activity):
             self.chattube = ChatTube(tube_conn, self.initiating,
                                      self.event_received_cb)
 
-            if self.waiting_for_deck:
-                self._send_event('j')
+            if self._waiting_for_reflections:
+                self._send_event('r')
 
     def event_received_cb(self, text):
         ''' Data is passed as tuples: cmd:text '''
         logging.debug(text)
-        if text[0] == '?':  # dispatch table goes here
-            pass
+        if text[0] == 'r':
+            # Sharer needs to send reflections database to joiners.
+            if self.initiating:
+                # Send pictures first.
+                for item in self.reflection_data:
+                    if 'content' in item:
+                        for content in item['content']:
+                            if 'image' in content:
+                                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                                    item['image'], 120, 90)
+                                if pixbuf is not None:
+                                    data = utils.pixbuf_to_base64(pixbuf)
+                                self.send_event(
+                                    'p' + '|' +
+                                    os.path.basename(item['image']) + '|' +
+                                    data)
+                data = json.dumps(self.reflection_data)
+                self.send_event('R' + data)
+        elif text[0] == 'p':
+            # Receive a picture
+            cmd, basename, data = text.split('|', 3)
+            utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
+        elif text[0] == 'R':
+            # Joiner needs to load reflection database.
+            if not self.initating:
+                # Note that pictures should be received.
+                self.reflection_data = json.loads(text[1:])
+                self._reflect_window.load(self.reflection_data)
+                self.reset_cursor()
 
     def _send_event(self, entry):
         ''' Send event through the tube. '''

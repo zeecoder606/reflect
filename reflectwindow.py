@@ -167,13 +167,13 @@ class ReflectWindow(Gtk.Alignment):
         self.load(reflection_data)
 
     def load(self, reflection_data):
-        self._row = 1  # 0 is the entry for new reflections
+        row = 1  # 0 is the entry for new reflections
         for item in reflection_data:
             reflection = Reflection(self._activity, item)
             self._reflections_grid.attach(
-                reflection.get_graphics(), 0, self._row, 4, 1)
+                reflection.get_graphics(), 0, row, 4, 1)
             reflection.refresh()
-            self._row += 1
+            row += 1
 
         # Add an empty box at the end to expand the scrolled window
         eb = Gtk.EventBox()
@@ -183,7 +183,7 @@ class ReflectWindow(Gtk.Alignment):
         box.set_size_request(ENTRY_WIDTH, int(Gdk.Screen.height() / 2))
         eb.add(box)
         box.show()
-        self._reflections_grid.attach(eb, 0, self._row, 4, 1)
+        self._reflections_grid.attach(eb, 0, row, 4, 1)
         eb.show()
 
     def _entry_activate_cb(self, entry):
@@ -396,8 +396,13 @@ class ReflectionGrid(Gtk.EventBox):
         self._comment_aligns = []
         if 'comments' in self._reflection.data:
             for comment in self._reflection.data['comments']:
-                # FIX ME: Text, attribution
-                obj = Gtk.Label(comment)
+                # TODO: Add icon
+                obj = Gtk.TextView()
+                obj.set_editable(False)
+                obj.set_size_request(ENTRY_WIDTH, -1)
+                obj.set_wrap_mode(Gtk.WrapMode.WORD)
+                obj.get_buffer().set_text(comment)
+
                 align = Gtk.Alignment.new(
                     xalign=0, yalign=0.5, xscale=0, yscale=0)
                 align.add(obj)

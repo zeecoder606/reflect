@@ -224,7 +224,7 @@ class ReflectionGrid(Gtk.EventBox):
         self.add(self._grid)
         self._grid.show()
 
-        self._grid.set_row_spacing(0)
+        self._grid.set_row_spacing(style.DEFAULT_PADDING)
         self._grid.set_column_spacing(style.DEFAULT_SPACING)
         self._grid.set_column_homogeneous(True)
         self._grid.set_border_width(style.DEFAULT_PADDING)

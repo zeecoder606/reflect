@@ -692,22 +692,22 @@ class ReflectActivity(activity.Activity):
                         for content in item['content']:
                             if 'image' in content:
                                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                                    item['image'], 120, 90)
+                                    content['image'], 120, 90)
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
-                                self.send_event(
+                                self._send_event(
                                     'p' + '|' +
-                                    os.path.basename(item['image']) + '|' +
+                                    os.path.basename(content['image']) + '|' +
                                     data)
                 data = json.dumps(self.reflection_data)
-                self.send_event('R' + data)
+                self._send_event('R' + data)
         elif text[0] == 'p':
             # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
             cmd, basename, data = text.split('|', 3)
             utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
         elif text[0] == 'R':
             # Joiner needs to load reflection database.
-            if not self.initating:
+            if not self.initiating:
                 # Note that pictures should be received.
                 self.reflection_data = json.loads(text[1:])
                 self._reflect_window.load(self.reflection_data)

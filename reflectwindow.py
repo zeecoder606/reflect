@@ -20,6 +20,7 @@ from gi.repository import Gdk
 from gi.repository import GObject
 from gi.repository import GConf
 from gi.repository import GdkPixbuf
+from gi.repository import Pango
 
 from sugar3.graphics import style
 from sugar3.graphics.icon import CanvasIcon, EventIcon
@@ -237,27 +238,27 @@ class ReflectionGrid(Gtk.EventBox):
 
         self._title_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
-        self._title = Gtk.Label()
+        self._title = Gtk.TextView()
         self._title.set_size_request(ENTRY_WIDTH, -1)
-        self._title.set_use_markup(True)
-        self._title.set_markup(
-            '<span foreground="%s"><big><b>%s</b></big></span>' %
-            (self._title_color, self._reflection.data['title']))
+        self._title.set_wrap_mode(Gtk.WrapMode.WORD)
+        title_tag = self._title.get_buffer().create_tag(
+            'title', foreground=self._title_color, weight=Pango.Weight.BOLD,
+            size=18000)
+        iter_text = self._title.get_buffer().get_iter_at_offset(0)
+        self._title.get_buffer().insert_with_tags(
+            iter_text, self._reflection.data['title'], title_tag)
+        self._title.connect('focus-out-event', self._title_focus_out_cb)
         self._title_align.add(self._title)
         self._title.show()
         self._grid.attach(self._title_align, 1, row, 5, 1)
         self._title_align.show()
-
-        button = EventIcon(icon_name='edit', pixel_size=BUTTON_SIZE)
-        button.connect('button-press-event', self._edit_title_cb)
-        self._grid.attach(button, 6, row, 1, 1)
-        button.show()
         row += 1
 
         self._time_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
         self._time = Gtk.Label()
         self._time.set_size_request(ENTRY_WIDTH, -1)
+        self._time.set_justify(Gtk.Justification.LEFT)
         self._time.set_use_markup(True)
         try:
             time_string = util.timestamp_to_elapsed_string(
@@ -307,9 +308,8 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(self._activities_align, 1, row, 5, 1)
         self._activities_align.show()
 
-        self._new_activity = EventIcon(icon_name='activity-journal',
+        self._new_activity = EventIcon(icon_name='add-item',
                                        pixel_size=BUTTON_SIZE)
-        self._new_activity.set_icon_name('activity-journal')
         self._new_activity.connect('button-press-event',
                                    self._activity_button_cb)
         self._grid.attach(self._new_activity, 6, row, 1, 1)
@@ -385,12 +385,10 @@ class ReflectionGrid(Gtk.EventBox):
         self._row = row
         self._new_entry = Gtk.Entry()
         self._new_entry.props.placeholder_text = _('Write a reflection')
-        # entry.set_size_request(style.GRID_CELL_SIZE * 4, -1)
         self._new_entry.connect('activate', self._entry_activate_cb)
         self._grid.attach(self._new_entry, 1, row, 5, 1)
-        self._new_image = EventIcon(icon_name='activity-journal',
+        self._new_image = EventIcon(icon_name='add-picture',
                                  pixel_size=BUTTON_SIZE)
-        self._new_image.set_icon_name('activity-journal')
         self._new_image.connect('button-press-event', self._image_button_cb)
         self._grid.attach(self._new_image, 6, row, 1, 1)
         row += 1
@@ -489,22 +487,9 @@ class ReflectionGrid(Gtk.EventBox):
         text_buffer.set_text(label.replace('\12', ''))
         self._reflection.set_modification_time()
 
-    def _edit_title_cb(self, button, event):
-        entry = Gtk.Entry()
-        entry.set_text(self._title.get_text())
-        entry.connect('activate', self._title_activate_cb)
-        self._title_align.remove(self._title)
-        self._title_align.add(entry)
-        entry.show()
-
-    def _title_activate_cb(self, entry):
-        # TODO: SAVE NEW TITLE
-        text = entry.props.text
-        self._title.set_markup(
-            '<span foreground="%s"><big><b>%s</b></big></span>' %
-            (self._title_color, text))
-        self._title_align.remove(entry)
-        self._title_align.add(self._title)
+    def _title_focus_out_cb(self, widget, event):
+        bounds = widget.get_buffer().get_bounds()
+        text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
         self._reflection.data['title'] = text
         self._reflection.set_modification_time()
 

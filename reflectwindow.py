@@ -41,8 +41,6 @@ PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
 REFLECTION_WIDTH = 8 * style.GRID_CELL_SIZE
 
-# TODO: disable editing if joiner
-
 
 class ReflectButtons(Gtk.Alignment):
 
@@ -159,17 +157,22 @@ class ReflectWindow(Gtk.Alignment):
 
         self._activity.load_graphics_area(self)
 
-        entry = Gtk.Entry()
-        entry.props.placeholder_text = _('Add a reflection')
-        entry.connect('activate', self._entry_activate_cb)
-        self._reflections_grid.attach(entry, 0, 0, 4, 1)
-        entry.show()
+        if self._activity.initiating:
+            entry = Gtk.Entry()
+            entry.props.placeholder_text = _('Add a reflection')
+            entry.connect('activate', self._entry_activate_cb)
+            self._reflections_grid.attach(entry, 0, 0, 4, 1)
+            entry.show()
 
     def reload(self, reflection_data):
         self.load(reflection_data)
 
     def load(self, reflection_data):
-        row = 1  # 0 is the entry for new reflections
+        if self._activity.initiating:
+            row = 1  # 0 is the entry for new reflections
+        else:
+            row = 0
+
         for item in reflection_data:
             reflection = Reflection(self._activity, item)
             self._reflections_grid.attach(
@@ -251,7 +254,10 @@ class ReflectionGrid(Gtk.EventBox):
         iter_text = self._title.get_buffer().get_iter_at_offset(0)
         self._title.get_buffer().insert_with_tags(
             iter_text, self._reflection.data['title'], title_tag)
-        self._title.connect('focus-out-event', self._title_focus_out_cb)
+        if self._reflection.activity.initiating:
+            self._title.connect('focus-out-event', self._title_focus_out_cb)
+        else:
+            self._title.set_editable(False)
         self._title_align.add(self._title)
         self._title.show()
         self._grid.attach(self._title_align, 1, row, 5, 1)
@@ -289,7 +295,7 @@ class ReflectionGrid(Gtk.EventBox):
                 if len(label) > 0:
                     label += ', '
                 label += tag
-        if label == '':
+        if self._reflection.activity.initiating and label == '':
             label = _('Add a #tag')
         self._tag_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
@@ -297,10 +303,13 @@ class ReflectionGrid(Gtk.EventBox):
         tag_view.set_size_request(ENTRY_WIDTH, -1)
         tag_view.set_wrap_mode(Gtk.WrapMode.WORD)
         tag_view.get_buffer().set_text(label)
-        tag_view.get_buffer().connect('insert-text', self._insert_tag_cb)
-        tag_view.connect('focus-in-event', self._tag_focus_in_cb,
-                         _('Add a #tag'))
-        tag_view.connect('focus-out-event', self._tags_focus_out_cb)
+        if self._reflection.activity.initiating:
+            tag_view.get_buffer().connect('insert-text', self._insert_tag_cb)
+            tag_view.connect('focus-in-event', self._tag_focus_in_cb,
+                             _('Add a #tag'))
+            tag_view.connect('focus-out-event', self._tags_focus_out_cb)
+        else:
+            tag_view.set_editable(False)
         self._tag_align.add(tag_view)
         tag_view.show()
         self._grid.attach(self._tag_align, 1, row, 5, 1)
@@ -312,12 +321,13 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(self._activities_align, 1, row, 5, 1)
         self._activities_align.show()
 
-        self._new_activity = EventIcon(icon_name='add-item',
-                                       pixel_size=BUTTON_SIZE)
-        self._new_activity.connect('button-press-event',
-                                   self._activity_button_cb)
-        self._grid.attach(self._new_activity, 6, row, 1, 1)
-        self._new_activity.show()
+        if self._reflection.activity.initiating:
+            self._new_activity = EventIcon(icon_name='add-item',
+                                           pixel_size=BUTTON_SIZE)
+            self._new_activity.connect('button-press-event',
+                                       self._activity_button_cb)
+            self._grid.attach(self._new_activity, 6, row, 1, 1)
+            self._new_activity.show()
         row += 1
 
         self._stars_align = Gtk.Alignment.new(
@@ -335,8 +345,9 @@ class ReflectionGrid(Gtk.EventBox):
                 icon_name = 'star-empty'
             self._star_icons.append(EventIcon(icon_name=icon_name,
                                               pixel_size=STAR_SIZE))
-            self._star_icons[-1].connect('button-press-event',
-                                         self._star_button_cb, i)
+            if self._reflection.activity.initiating:
+                self._star_icons[-1].connect('button-press-event',
+                                             self._star_button_cb, i)
             grid.attach(self._star_icons[-1], i, 0, 1, 1)
             self._star_icons[-1].show()
         self._stars_align.add(grid)
@@ -360,9 +371,12 @@ class ReflectionGrid(Gtk.EventBox):
                     obj.set_wrap_mode(Gtk.WrapMode.WORD)
 
                     obj.get_buffer().set_text(item['text'])
-                    obj.connect('focus-in-event', self._text_focus_in_cb)
-                    obj.connect('focus-out-event', self._text_focus_out_cb, i)
-
+                    if self._reflection.activity.initiating:
+                        obj.connect('focus-in-event', self._text_focus_in_cb)
+                        obj.connect(
+                            'focus-out-event', self._text_focus_out_cb, i)
+                    else:
+                        obj.set_editable(False)
                     if first_text:
                         self._content_we_always_show.append(align)
                         first_text = False
@@ -384,21 +398,23 @@ class ReflectionGrid(Gtk.EventBox):
                     row += 1
 
         self._row = row
-        self._new_entry = Gtk.Entry()
-        self._new_entry.props.placeholder_text = _('Write a reflection')
-        self._new_entry.connect('activate', self._entry_activate_cb)
-        self._grid.attach(self._new_entry, 1, row, 5, 1)
-        self._content_we_always_show.append(self._new_entry)
-        self._new_image = EventIcon(icon_name='add-picture',
-                                 pixel_size=BUTTON_SIZE)
-        self._new_image.connect('button-press-event', self._image_button_cb)
-        self._grid.attach(self._new_image, 6, row, 1, 1)
-        self._content_we_always_show.append(self._new_image)
+        if self._reflection.activity.initiating:
+            self._new_entry = Gtk.Entry()
+            self._new_entry.props.placeholder_text = _('Write a reflection')
+            self._new_entry.connect('activate', self._entry_activate_cb)
+            self._grid.attach(self._new_entry, 1, row, 5, 1)
+            self._content_we_always_show.append(self._new_entry)
+            self._new_image = EventIcon(icon_name='add-picture',
+                                        pixel_size=BUTTON_SIZE)
+            self._new_image.connect('button-press-event', self._image_button_cb)
+            self._grid.attach(self._new_image, 6, row, 1, 1)
+            self._content_we_always_show.append(self._new_image)
 
         for align in self._content_we_always_show:
             align.show()
         row += 1
 
+        self._comment_row = row
         self._comment_aligns = []
         if 'comments' in self._reflection.data:
             for comment in self._reflection.data['comments']:
@@ -413,9 +429,13 @@ class ReflectionGrid(Gtk.EventBox):
                     xalign=0, yalign=0.5, xscale=0, yscale=0)
                 align.add(obj)
                 obj.show()
-                self._grid.attach(align, 1, row, 5, 1)
+                self._grid.attach(align, 1, self._comment_row, 5, 1)
                 self._comment_aligns.append(align)
-                row += 1
+                self._comment_row += 1
+        self._new_comment = Gtk.Entry()
+        self._new_comment.props.placeholder_text = _('Make a comment')
+        self._new_comment.connect('activate', self._comment_activate_cb)
+        self._grid.attach(self._new_comment, 1, self._comment_row, 5, 1)
 
     def _star_button_cb(self, button, event, n):
         if 'stars' in self._reflection.data:
@@ -503,6 +523,26 @@ class ReflectionGrid(Gtk.EventBox):
         text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
         self._reflection.data['title'] = text
         self._reflection.set_modification_time()
+
+    def _comment_activate_cb(self, entry):
+        text = entry.props.text
+        if not 'comments' in self._reflection.data:
+            self._reflection.data['comments'] = []
+        self._reflection.data['comments'].append(text)
+        i = len(self._reflection.data['content'])
+        obj = Gtk.TextView()
+        obj.set_size_request(ENTRY_WIDTH, -1)
+        obj.set_wrap_mode(Gtk.WrapMode.WORD)
+        obj.get_buffer().set_text(text)
+        align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
+        align.add(obj)
+        obj.show()
+        self._grid.insert_row(self._comment_row)
+        self._grid.attach(align, 1, self._comment_row, 5, 1)
+        self._comment_row += 1
+        align.show()
+        entry.set_text('')
+        # TODO: Send comment
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
@@ -690,6 +730,7 @@ class ReflectionGrid(Gtk.EventBox):
             align.show()
         for align in self._comment_aligns:
             align.show()
+        self._new_comment.show()
 
     def _collapse_cb(self, button, event):
         self._grid.set_row_spacing(0)
@@ -705,6 +746,7 @@ class ReflectionGrid(Gtk.EventBox):
                 align.hide()
         for align in self._comment_aligns:
             align.hide()
+        self._new_comment.hide()
 
 class Reflection():
     ''' A class to hold a reflection '''

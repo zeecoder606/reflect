@@ -101,9 +101,12 @@ class ReflectActivity(activity.Activity):
         self._clipboard_text = ''
         self._fixed = None
 
+        self.initiating = True
         if self.shared_activity:
             # We're joining
             if not self.get_shared():
+                self.initiating = False
+
                 self.busy_cursor()
                 share_icon = Icon(icon_name='zoom-neighborhood')
                 self._joined_alert = Alert()
@@ -593,7 +596,6 @@ class ReflectActivity(activity.Activity):
     def _setup_presence_service(self):
         ''' Setup the Presence Service. '''
         self.pservice = presenceservice.get_instance()
-        self.initiating = None  # sharing (True) or joining (False)
 
         owner = self.pservice.get_owner()
         self.owner = owner

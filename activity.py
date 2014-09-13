@@ -182,7 +182,11 @@ class ReflectActivity(activity.Activity):
                    dsobj.metadata['mime_type'][0:5] == 'image':
                     new_path = os.path.join(self.tmp_path,
                                             dsobj.object_id)
-                    shutil.copy(dsobj.file_path, new_path)
+                    try:
+                        shutil.copy(dsobj.file_path, new_path)
+                    except Exception as e:
+                        logging.error("Couldn't copy %s to %s: %s" %
+                                      (dsobj.file_path, new_path, e))
                     self.reflection_data[-1]['content'].append(
                         {'image': new_path})
                 elif 'preview' in dsobj.metadata:

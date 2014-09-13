@@ -191,11 +191,13 @@ class ReflectWindow(Gtk.Alignment):
         self._activity.reflection_data.insert(0, {'title': text})
         reflection = Reflection(
             self._activity,
-            self._activity.reflection_data[-1])
+            self._activity.reflection_data[0])
+        reflection.set_title(text)
         reflection.set_creation_time()
+        reflection.add_activity(
+            utils.bundle_id_to_icon('org.sugarlabs.Reflect'))
         reflection.set_stars(0)
         self._reflections_grid.insert_row(1)
-        reflection.set_title(text)
         self._reflections_grid.attach(
             reflection.get_graphics(), 0, 1, 3, 1)
         reflection.refresh()
@@ -379,18 +381,20 @@ class ReflectionGrid(Gtk.EventBox):
                     self._content_aligns.append(align)
                     row += 1
 
-        for align in self._content_we_always_show:
-            align.show()
-
         self._row = row
         self._new_entry = Gtk.Entry()
         self._new_entry.props.placeholder_text = _('Write a reflection')
         self._new_entry.connect('activate', self._entry_activate_cb)
         self._grid.attach(self._new_entry, 1, row, 5, 1)
+        self._content_we_always_show.append(self._new_entry)
         self._new_image = EventIcon(icon_name='add-picture',
                                  pixel_size=BUTTON_SIZE)
         self._new_image.connect('button-press-event', self._image_button_cb)
         self._grid.attach(self._new_image, 6, row, 1, 1)
+        self._content_we_always_show.append(self._new_image)
+
+        for align in self._content_we_always_show:
+            align.show()
         row += 1
 
         self._comment_aligns = []
@@ -550,8 +554,6 @@ class ReflectionGrid(Gtk.EventBox):
                 if x > 6:
                     y += 1
                     x = 0
-        # self._activity_sw.set_keep_above(True)
-        # self._activity_sw.show()
         self._reflection.activity.show_overlay_area()
         self._reflection.activity.reset_cursor()
 
@@ -576,8 +578,13 @@ class ReflectionGrid(Gtk.EventBox):
             for icon_path in self._reflection.data['activities']:
                 if icon_path is None:
                     continue
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                    icon_path, BUTTON_SIZE, BUTTON_SIZE)
+                try:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                        icon_path, BUTTON_SIZE, BUTTON_SIZE)
+                except Exception as e:
+                    logging.error('Could not find icon %s: %s' %
+                                  (icon_path, e))
+                    continue
                 self._activities.append(Gtk.Image.new_from_pixbuf(pixbuf))
                 self._activities_grid.attach(
                     self._activities[-1], column, 0, 1, 1)
@@ -585,7 +592,7 @@ class ReflectionGrid(Gtk.EventBox):
                 column += 1
         else:
             label = Gtk.Label('Add an activity')
-            self._activities_grid.attach(label, 0, row, 5, 1)
+            self._activities_grid.attach(label, 0, 0, 5, 1)
             label.show()
         self._activities_align.add(self._activities_grid)
         self._activities_grid.show()
@@ -679,8 +686,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._stars_align.show()
         for align in self._content_aligns:
             align.show()
-        self._new_entry.show()
-        self._new_image.show()
         for align in self._comment_aligns:
             align.show()
 
@@ -696,8 +701,6 @@ class ReflectionGrid(Gtk.EventBox):
         for align in self._content_aligns:
             if not align in self._content_we_always_show:
                 align.hide()
-        self._new_entry.hide()
-        self._new_image.hide()
         for align in self._comment_aligns:
             align.hide()
 
@@ -745,6 +748,8 @@ class Reflection():
         return tag in self.data['tags']
 
     def add_activity(self, activity):
+        if not 'activities' in self.data:
+            self.data['activities'] = []
         self.data['activities'].append(activity)
 
     def set_stars(self, n):

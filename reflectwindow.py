@@ -167,13 +167,24 @@ class ReflectWindow(Gtk.Alignment):
         self.load(reflection_data)
 
     def load(self, reflection_data):
-        self._row = 0
+        self._row = 1  # 0 is the entry for new reflections
         for item in reflection_data:
             reflection = Reflection(self._activity, item)
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, self._row, 4, 1)
             reflection.refresh()
             self._row += 1
+
+        # Add an empty box at the end to expand the scrolled window
+        eb = Gtk.EventBox()
+        eb.modify_bg(Gtk.StateType.NORMAL,
+                     self._activity.bg_color.get_gdk_color())
+        box = Gtk.Box()
+        box.set_size_request(ENTRY_WIDTH, int(Gdk.Screen.height() / 2))
+        eb.add(box)
+        box.show()
+        self._reflections_grid.attach(eb, 0, self._row, 4, 1)
+        eb.show()
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
@@ -205,18 +216,7 @@ class ReflectionGrid(Gtk.EventBox):
 
         self.modify_bg(
             Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
-
-        color = profile.get_color()
-        color_stroke = color.get_stroke_color()
-        color_fill = color.get_fill_color()
-
-        lighter = utils.lighter_color([color_stroke, color_fill])
-        darker = 1 - lighter
-
-        if darker == 0:
-            self._title_color = color_stroke
-        else:
-            self._title_color = color_fill
+        self._title_color = self._reflection.activity.fg_color.get_html()
 
         self._grid = Gtk.Grid()
         self.add(self._grid)

@@ -70,11 +70,13 @@ class ReflectActivity(activity.Activity):
         darker = 1 - lighter
 
         if lighter == 0:
-            bg_color = style.Color(color_stroke)
+            self.bg_color = style.Color(color_stroke)
+            self.fg_color = style.Color(color_fill)
         else:
-            bg_color = style.Color(color_fill)
+            self.bg_color = style.Color(color_fill)
+            self.fg_color = style.Color(color_stroke)
 
-        self.modify_bg(Gtk.StateType.NORMAL, bg_color.get_gdk_color())
+        self.modify_bg(Gtk.StateType.NORMAL, self.bg_color.get_gdk_color())
 
         self.bundle_path = activity.get_bundle_path()
         self.tmp_path = os.path.join(activity.get_activity_root(), 'instance')

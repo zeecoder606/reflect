@@ -83,10 +83,15 @@ class ReflectButtons(Gtk.Alignment):
         button_grid.attach(self.date_button, 1, 0, 1, 1)
         self.date_button.show()
 
+        self._stars_button = Gtk.Button(_('Stars'), name='next-button')
+        self._stars_button.connect('clicked', self._stars_button_cb)
+        button_grid.attach(self._stars_button, 2, 0, 1, 1)
+        self._stars_button.show()
+
         # FIX ME: Need a tag to search on
         self._search_button = Gtk.Button(_('Search'), name='next-button')
         self._search_button.connect('clicked', self._search_button_cb)
-        button_grid.attach(self._search_button, 2, 0, 1, 1)
+        button_grid.attach(self._search_button, 3, 0, 1, 1)
         self._search_button.show()
 
         align.add(button_grid)
@@ -96,18 +101,37 @@ class ReflectButtons(Gtk.Alignment):
 
     def _title_button_cb(self, button):
         ''' sort by title '''
-        logging.debug('title button pressed')
+        self._activity.busy_cursor()
+        GObject.idle_add(self._title_sort)
+
+    def _title_sort(self):
         sorted_data = sorted(self._activity.reflection_data,
                              key=lambda item: item['title'].lower())
         self._activity.reload_data(sorted_data)
+        self._activity.reset_cursor()
 
     def _date_button_cb(self, button):
         ''' sort by modification date '''
-        logging.debug('date button pressed')
+        self._activity.busy_cursor()
+        GObject.idle_add(self._date_sort)
+
+    def _date_sort(self):
         sorted_data = sorted(self._activity.reflection_data,
-                             key=lambda item: item['modification_time'],
+                             key=lambda item: int(item['modification_time']),
                              reverse=True)
         self._activity.reload_data(sorted_data)
+        self._activity.reset_cursor()
+
+    def _stars_button_cb(self, button):
+        ''' sort by number of stars '''
+        self._activity.busy_cursor()
+        GObject.idle_add(self._stars_sort)
+
+    def _stars_sort(self):
+        sorted_data = sorted(self._activity.reflection_data,
+                             key=lambda item: item['stars'], reverse=True)
+        self._activity.reload_data(sorted_data)
+        self._activity.reset_cursor()
 
     def _search_button_cb(self, button):
         ''' search by #tag '''

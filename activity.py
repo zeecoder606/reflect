@@ -10,7 +10,6 @@
 # along with this library; if not, write to the Free Software
 # Foundation, 51 Franklin Street, Suite 500 Boston, MA 02110-1335 USA
 
-import dbus
 import os
 import shutil
 from ConfigParser import ConfigParser
@@ -30,9 +29,17 @@ from sugar3.activity.widgets import ActivityToolbarButton
 from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
+from sugar3.graphics.alert import NotifyAlert, Alert
 from sugar3.graphics import style
 from sugar3 import profile
 from sugar3.datastore import datastore
+
+import telepathy
+import dbus
+from dbus.service import signal
+from dbus.gobject_service import ExportedGObject
+from sugar3.presence import presenceservice
+from sugar3.presence.tubeconn import TubeConnection
 
 from reflectwindow import ReflectButtons, ReflectWindow
 from graphics import Graphics, FONT_SIZES
@@ -40,6 +47,10 @@ import utils
 
 import logging
 _logger = logging.getLogger('reflect-activity')
+
+SERVICE = 'org.sugarlabs.Reflect'
+IFACE = SERVICE
+PATH = '/org/sugarlabs/Reflect'
 
 
 class ReflectActivity(activity.Activity):
@@ -60,6 +71,7 @@ class ReflectActivity(activity.Activity):
         self.font_size = 8
         self.zoom_level = self.font_size / float(len(FONT_SIZES))
 
+        self.max_participants = 4
         self._setup_toolbars()
 
         color = profile.get_color()
@@ -83,15 +95,34 @@ class ReflectActivity(activity.Activity):
 
         self._copy_entry = None
         self._paste_entry = None
-        self._about_panel_visible = False
         self._webkit = None
         self._clipboard_text = ''
         self._fixed = None
 
+        if self.shared_activity:
+            # We're joining
+            if not self.get_shared():
+                xocolors = [color_stroke, color_fill]
+                share_icon = Icon(icon_name='zoom-neighborhood',
+                                  xo_color=xocolors)
+                self._joined_alert = Alert()
+                self._joined_alert.props.icon = share_icon
+                self._joined_alert.props.title = _('Please wait')
+                self._joined_alert.props.msg = _('Starting connection...')
+                self.add_alert(self._joined_alert)
+
+                # Wait for joined signal
+                self.connect("joined", self._joined_cb)
+
         self._open_reflect_windows()
 
-        self.busy_cursor()
-        GObject.idle_add(self._load_reflections)
+        self._setup_presence_service()
+
+        # Joiners wait to receive data from sharer
+        # Otherwise, load reflections from local store
+        if not self.shared_activity:
+            self.busy_cursor()
+            GObject.idle_add(self._load_reflections)
 
     def read_file(self, file_path):
         fd = open(file_path, 'r')
@@ -380,8 +411,6 @@ class ReflectActivity(activity.Activity):
 
     def _setup_toolbars(self):
         ''' Setup the toolbars. '''
-        self.max_participants = 1  # No sharing
-
         self._toolbox = ToolbarBox()
 
         self.activity_button = ActivityToolbarButton(self)
@@ -559,3 +588,125 @@ class ReflectActivity(activity.Activity):
         self.remove_alert(alert)
         if response_id is Gtk.ResponseType.OK:
             self.close()
+
+    def _setup_presence_service(self):
+        ''' Setup the Presence Service. '''
+        self.pservice = presenceservice.get_instance()
+        self.initiating = None  # sharing (True) or joining (False)
+
+        owner = self.pservice.get_owner()
+        self.owner = owner
+        self._share = ''
+        self.connect('shared', self._shared_cb)
+        self.connect('joined', self._joined_cb)
+
+    def _shared_cb(self, activity):
+        ''' Either set up initial share...'''
+        if self.shared_activity is None:
+            _logger.error('Failed to share or join activity ... \
+                shared_activity is null in _shared_cb()')
+            return
+
+        self.initiating = True
+        _logger.debug('I am sharing...')
+
+        self.conn = self.shared_activity.telepathy_conn
+        self.tubes_chan = self.shared_activity.telepathy_tubes_chan
+        self.text_chan = self.shared_activity.telepathy_text_chan
+
+        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].connect_to_signal(
+            'NewTube', self._new_tube_cb)
+
+        _logger.debug('This is my activity: making a tube...')
+        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].OfferDBusTube(
+            SERVICE, {})
+
+    def _joined_cb(self, activity):
+        ''' ...or join an exisiting share. '''
+        if self.shared_activity is None:
+            _logger.error('Failed to share or join activity ... \
+                shared_activity is null in _shared_cb()')
+            return
+
+        if self._joined_alert is not None:
+            self.remove_alert(self._joined_alert)
+            self._joined_alert = None
+
+        self.initiating = False
+        _logger.debug('I joined a shared activity.')
+
+        self.conn = self.shared_activity.telepathy_conn
+        self.tubes_chan = self.shared_activity.telepathy_tubes_chan
+        self.text_chan = self.shared_activity.telepathy_text_chan
+
+        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].connect_to_signal(
+            'NewTube', self._new_tube_cb)
+
+        _logger.debug('I am joining an activity: waiting for a tube...')
+        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].ListTubes(
+            reply_handler=self._list_tubes_reply_cb,
+            error_handler=self._list_tubes_error_cb)
+
+    def _list_tubes_reply_cb(self, tubes):
+        ''' Reply to a list request. '''
+        for tube_info in tubes:
+            self._new_tube_cb(*tube_info)
+
+    def _list_tubes_error_cb(self, e):
+        ''' Log errors. '''
+        _logger.error('ListTubes() failed: %s', e)
+
+    def _new_tube_cb(self, id, initiator, type, service, params, state):
+        ''' Create a new tube. '''
+        _logger.debug('New tube: ID=%d initator=%d type=%d service=%s '
+                      'params=%r state=%d', id, initiator, type, service,
+                      params, state)
+
+        if (type == telepathy.TUBE_TYPE_DBUS and service == SERVICE):
+            if state == telepathy.TUBE_STATE_LOCAL_PENDING:
+                self.tubes_chan[
+                    telepathy.CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
+
+            tube_conn = TubeConnection(
+                self.conn, self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES], id,
+                group_iface=self.text_chan[telepathy.CHANNEL_INTERFACE_GROUP])
+
+            self.chattube = ChatTube(tube_conn, self.initiating,
+                                     self.event_received_cb)
+
+            if self.waiting_for_deck:
+                self._send_event('j')
+
+    def event_received_cb(self, text):
+        ''' Data is passed as tuples: cmd:text '''
+        logging.debug(text)
+        if text[0] == '?':  # dispatch table goes here
+            pass
+
+    def _send_event(self, entry):
+        ''' Send event through the tube. '''
+        if hasattr(self, 'chattube') and self.chattube is not None:
+            self.chattube.SendText(entry)
+
+
+class ChatTube(ExportedGObject):
+    ''' Class for setting up tube for sharing '''
+    def __init__(self, tube, is_initiator, stack_received_cb):
+        super(ChatTube, self).__init__(tube, PATH)
+        self.tube = tube
+        self.is_initiator = is_initiator  # Are we sharing or joining activity?
+        self.stack_received_cb = stack_received_cb
+        self.stack = ''
+
+        self.tube.add_signal_receiver(self.send_stack_cb, 'SendText', IFACE,
+                                      path=PATH, sender_keyword='sender')
+
+    def send_stack_cb(self, text, sender=None):
+        if sender == self.tube.get_unique_name():
+            return
+        self.stack = text
+        self.stack_received_cb(text)
+
+    @signal(dbus_interface=IFACE, signature='s')
+    def SendText(self, text):
+        self.stack = text

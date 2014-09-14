@@ -95,6 +95,7 @@ class ReflectActivity(activity.Activity):
         self.bundle_path = activity.get_bundle_path()
         self.tmp_path = os.path.join(activity.get_activity_root(), 'instance')
 
+        self.sharing = False
         self._copy_entry = None
         self._paste_entry = None
         self._webkit = None
@@ -625,6 +626,8 @@ class ReflectActivity(activity.Activity):
         self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].OfferDBusTube(
             SERVICE, {})
 
+        self.sharing = True
+
     def _joined_cb(self, activity):
         ''' ...or join an exisiting share. '''
         if self.shared_activity is None:
@@ -651,6 +654,8 @@ class ReflectActivity(activity.Activity):
         self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].ListTubes(
             reply_handler=self._list_tubes_reply_cb,
             error_handler=self._list_tubes_error_cb)
+
+        self.sharing = True
 
     def _list_tubes_reply_cb(self, tubes):
         ''' Reply to a list request. '''
@@ -680,7 +685,7 @@ class ReflectActivity(activity.Activity):
                                      self.event_received_cb)
 
             if self._waiting_for_reflections:
-                self._send_event('r')
+                self.send_event('r')
 
     def event_received_cb(self, text):
         ''' Data is passed as tuples: cmd:text '''
@@ -697,12 +702,21 @@ class ReflectActivity(activity.Activity):
                                     content['image'], 120, 90)
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
-                                self._send_event(
+                                self.send_event(
                                     'p' + '|' +
                                     os.path.basename(content['image']) + '|' +
                                     data)
                 data = json.dumps(self.reflection_data)
-                self._send_event('R' + data)
+                self.send_event('R' + data)
+        elif text[0] == 'c':
+            # Receive a comment and associated reflection ID
+            cmd, obj_id, comment = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj-id'] == obj_id:
+                    if not 'comments' in item:
+                        item['comments'] = []
+                    item['comments'].append(comment)
+            # TODO: add the comment to the reflection
         elif text[0] == 'p':
             # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
             cmd, basename, data = text.split('|', 3)
@@ -713,9 +727,10 @@ class ReflectActivity(activity.Activity):
                 # Note that pictures should be received.
                 self.reflection_data = json.loads(text[1:])
                 self._reflect_window.load(self.reflection_data)
+                self._waiting_for_reflections = False
                 self.reset_cursor()
 
-    def _send_event(self, entry):
+    def send_event(self, entry):
         ''' Send event through the tube. '''
         if hasattr(self, 'chattube') and self.chattube is not None:
             self.chattube.SendText(entry)

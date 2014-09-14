@@ -144,6 +144,7 @@ class ReflectWindow(Gtk.Alignment):
     def __init__(self, activity):
         Gtk.Alignment.__init__(self)
         self._activity = activity
+        self._reflections = []
 
         self.set_size_request(Gdk.Screen.width() - style.GRID_CELL_SIZE, -1)
 
@@ -175,9 +176,11 @@ class ReflectWindow(Gtk.Alignment):
 
         for item in reflection_data:
             reflection = Reflection(self._activity, item)
+            reflection.set_obj_id()
             self._reflections_grid.attach(
                 reflection.get_graphics(), 0, row, 4, 1)
             reflection.refresh()
+            self._reflections.append(reflection)
             row += 1
 
         # Add an empty box at the end to expand the scrolled window
@@ -191,6 +194,12 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(eb, 0, row, 4, 1)
         eb.show()
 
+    def insert_comment(self, obj_id, comment):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.add_new_comment(comment)
+                break
+
     def _entry_activate_cb(self, entry):
         text = entry.props.text
         self._activity.reflection_data.insert(0, {'title': text})
@@ -199,6 +208,7 @@ class ReflectWindow(Gtk.Alignment):
             self._activity.reflection_data[0])
         reflection.set_title(text)
         reflection.set_creation_time()
+        reflection.set_obj_id(generate=True)
         reflection.add_activity(
             utils.bundle_id_to_icon('org.sugarlabs.Reflect'))
         reflection.set_stars(0)
@@ -206,6 +216,7 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(
             reflection.get_graphics(), 0, 1, 3, 1)
         reflection.refresh()
+        self._reflections.append(reflection)
         entry.set_text('')
 
     def keypress_cb(self, widget, event):
@@ -526,10 +537,17 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _comment_activate_cb(self, entry):
         text = entry.props.text
+        self.add_new_comment(text)
+        # Send the comment
+        if self._reflection.activity.sharing:
+            self._reflection.activity.send_event(
+                'c|%s|%s' % self._reflection.data['obj-id'], text)
+        entry.set_text('')
+
+    def add_new_comment(self, text):
         if not 'comments' in self._reflection.data:
             self._reflection.data['comments'] = []
         self._reflection.data['comments'].append(text)
-        i = len(self._reflection.data['content'])
         obj = Gtk.TextView()
         obj.set_size_request(ENTRY_WIDTH, -1)
         obj.set_wrap_mode(Gtk.WrapMode.WORD)
@@ -541,8 +559,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(align, 1, self._comment_row, 5, 1)
         self._comment_row += 1
         align.show()
-        entry.set_text('')
-        # TODO: Send comment
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
@@ -756,9 +772,15 @@ class Reflection():
         self.data = data  # dictionary entry for this reflection
         self.creation_time = None
         self.modification_time = None
+        self.obj_id = None
 
     def set_title(self, title):
         self.data['title'] = title
+
+    def set_obj_id(self, generate=False):
+        if generate:
+            self.data['obj_id'] = 'obj-%d' % int(uniform(0, 10000))
+        self.obj_id = self.data['obj_id']
 
     def set_creation_time(self):
         self.data['creation_time'] = int(time.time())
@@ -806,10 +828,10 @@ class Reflection():
 
     def get_graphics(self):
         ''' return resizable entry '''
-        self._graphics = ReflectionGrid(self)
-        return self._graphics
+        self.graphics = ReflectionGrid(self)
+        return self.graphics
 
     def refresh(self):
         ''' redraw graphics with updated content '''
-        self._graphics.set_size_request(REFLECTION_WIDTH, -1)
-        self._graphics.show()
+        self.graphics.set_size_request(REFLECTION_WIDTH, -1)
+        self.graphics.show()

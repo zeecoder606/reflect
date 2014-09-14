@@ -712,7 +712,7 @@ class ReflectActivity(activity.Activity):
             # Receive a comment and associated reflection ID
             cmd, obj_id, comment = text.split('|', 3)
             for item in self.reflection_data:
-                if item['obj-id'] == obj_id:
+                if item['obj_id'] == obj_id:
                     if not 'comments' in item:
                         item['comments'] = []
                     item['comments'].append(comment)

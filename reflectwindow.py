@@ -200,6 +200,12 @@ class ReflectWindow(Gtk.Alignment):
                 item.graphics.add_new_comment(comment)
                 break
 
+    def insert_reflection(self, obj_id, reflection):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.add_new_reflection(reflection)
+                break
+
     def _entry_activate_cb(self, entry):
         text = entry.props.text
         self._activity.reflection_data.insert(0, {'title': text})
@@ -566,6 +572,14 @@ class ReflectionGrid(Gtk.EventBox):
             self._reflection.data['content'] = []
         self._reflection.data['content'].append({'text': text})
         self._reflection.set_modification_time()
+        self.add_new_reflection(text)
+        # Send the reflection
+        if self._reflection.activity.sharing:
+            self._reflection.activity.send_event(
+                'x|%s|%s' % (self._reflection.data['obj_id'], text))
+        entry.set_text('')
+
+    def add_new_reflection(self, text):
         i = len(self._reflection.data['content'])
         obj = Gtk.TextView()
         obj.set_size_request(ENTRY_WIDTH, -1)
@@ -580,7 +594,6 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(align, 1, self._row, 5, 1)
         self._row += 1
         align.show()
-        entry.set_text('')
 
     def _activity_button_cb(self, button, event):
         self._reflection.activity.busy_cursor()

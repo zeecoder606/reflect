@@ -715,8 +715,24 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    # Add the comment to the reflection
+                    if not 'comments' in item:
+                        item['comments'] = []
+                    item['comments'].append(comment)
                     self._reflect_window.insert_comment(obj_id, comment)
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == 'x':
+            found_the_object = False
+            # Receive a reflection and associated reflection ID
+            cmd, obj_id, reflection = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    if not '' in item:
+                        item['content'] = []
+                    item['content'].append({'text': reflection})
+                    self._reflect_window.insert_reflection(obj_id, reflection)
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)

@@ -537,6 +537,9 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _comment_activate_cb(self, entry):
         text = entry.props.text
+        if not 'comments' in self._reflection.data:
+            self._reflection.data['comments'] = []
+        self._reflection.data['comments'].append(text)
         self.add_new_comment(text)
         # Send the comment
         if self._reflection.activity.sharing:
@@ -545,9 +548,6 @@ class ReflectionGrid(Gtk.EventBox):
         entry.set_text('')
 
     def add_new_comment(self, text):
-        if not 'comments' in self._reflection.data:
-            self._reflection.data['comments'] = []
-        self._reflection.data['comments'].append(text)
         obj = Gtk.TextView()
         obj.set_size_request(ENTRY_WIDTH, -1)
         obj.set_wrap_mode(Gtk.WrapMode.WORD)

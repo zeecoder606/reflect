@@ -715,9 +715,6 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    if not 'comments' in item:
-                        item['comments'] = []
-                    item['comments'].append(comment)
                     # Add the comment to the reflection
                     self._reflect_window.insert_comment(obj_id, comment)
                     break

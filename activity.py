@@ -709,14 +709,20 @@ class ReflectActivity(activity.Activity):
                 data = json.dumps(self.reflection_data)
                 self.send_event('R' + data)
         elif text[0] == 'c':
+            found_the_object = False
             # Receive a comment and associated reflection ID
             cmd, obj_id, comment = text.split('|', 3)
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
+                    found_the_object = True
                     if not 'comments' in item:
                         item['comments'] = []
                     item['comments'].append(comment)
-            # TODO: add the comment to the reflection
+                    # Add the comment to the reflection
+                    self._reflect_window.insert_comment(obj_id, comment)
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
         elif text[0] == 'p':
             # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
             cmd, basename, data = text.split('|', 3)

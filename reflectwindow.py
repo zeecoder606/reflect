@@ -541,7 +541,7 @@ class ReflectionGrid(Gtk.EventBox):
         # Send the comment
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(
-                'c|%s|%s' % self._reflection.data['obj_id'], text)
+                'c|%s|%s' % (self._reflection.data['obj_id'], text))
         entry.set_text('')
 
     def add_new_comment(self, text):

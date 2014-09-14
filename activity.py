@@ -689,7 +689,7 @@ class ReflectActivity(activity.Activity):
 
     def event_received_cb(self, text):
         ''' Data is passed as tuples: cmd:text '''
-        logging.debug(text)
+        logging.debug(text[0])
         if text[0] == 'r':
             # Sharer needs to send reflections database to joiners.
             if self.initiating:

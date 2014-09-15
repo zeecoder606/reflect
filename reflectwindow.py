@@ -209,7 +209,7 @@ class ReflectWindow(Gtk.Alignment):
                 item.graphics.update_title(text)
                 break
 
-    def update_stars(self, obj_id, text):
+    def update_stars(self, obj_id, stars):
         for item in self._reflections:
             if item.obj_id == obj_id:
                 item.graphics.update_stars(stars)
@@ -795,11 +795,12 @@ class ReflectionGrid(Gtk.EventBox):
                 del chooser
 
             if name is not None:
-                pixbuf = self.add_new_picture(jobject.file_path)
+                pixbuf e= self.add_new_picture(jobject.file_path)
                 self._reflection.set_modification_time()
                 if self._reflection.activity.sharing and pixbuf is not None:
                     self._reflection.activity.send_event(
-                        '%s|%s|%s' % (PICTURE_CMD, os.path.basename(path),
+                        '%s|%s|%s' % (PICTURE_CMD,
+                                      os.path.basename(jobject.file_path),
                                       utils.pixbuf_to_base64(pixbuf)))
                     self._reflection.activity.send_event(
                         '%s|%s|%s' % (IMAGE_REFLECTION_CMD,

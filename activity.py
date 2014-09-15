@@ -731,7 +731,7 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    self._reflect_window.update_tags(obj_id, int(data))
+                    self._reflect_window.update_tags(obj_id, data)
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)

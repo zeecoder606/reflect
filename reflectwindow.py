@@ -795,7 +795,7 @@ class ReflectionGrid(Gtk.EventBox):
                 del chooser
 
             if name is not None:
-                pixbuf e= self.add_new_picture(jobject.file_path)
+                pixbuf = self.add_new_picture(jobject.file_path)
                 self._reflection.set_modification_time()
                 if self._reflection.activity.sharing and pixbuf is not None:
                     self._reflection.activity.send_event(

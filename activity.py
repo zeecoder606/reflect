@@ -54,6 +54,14 @@ SERVICE = 'org.sugarlabs.Reflect'
 IFACE = SERVICE
 PATH = '/org/sugarlabs/Reflect'
 
+TITLE_CMD = 'T'
+STAR_CMD = '*'
+TAG_CMD = 't'
+COMMENT_CMD = 'c'
+REFLECTION_CMD = 'x'
+PICTURE_CMD = 'p'
+JOIN_CMD = 'r'
+SHARE_CMD = 'R'
 
 class ReflectActivity(activity.Activity):
     ''' An activity for reflecting on one's work '''
@@ -685,12 +693,12 @@ class ReflectActivity(activity.Activity):
                                      self.event_received_cb)
 
             if self._waiting_for_reflections:
-                self.send_event('r')
+                self.send_event(JOIN_CMD)
 
     def event_received_cb(self, text):
         ''' Data is passed as tuples: cmd:text '''
         logging.debug(text[0])
-        if text[0] == 'r':
+        if text[0] == JOIN_CMD:
             # Sharer needs to send reflections database to joiners.
             if self.initiating:
                 # Send pictures first.
@@ -703,12 +711,39 @@ class ReflectActivity(activity.Activity):
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
                                 self.send_event(
-                                    'p' + '|' +
+                                    PICTURE_CMD + '|' +
                                     os.path.basename(content['image']) + '|' +
                                     data)
                 data = json.dumps(self.reflection_data)
-                self.send_event('R' + data)
-        elif text[0] == 'c':
+                self.send_event(SHARE_CMD + data)
+        elif text[0] == TITLE_CMD:
+            cmd, obj_id, title = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    self._reflect_window.update_title(obj_id, text)
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == TAG_CMD:
+            cmd, obj_id, data = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    self._reflect_window.update_tags(obj_id, int(data))
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == STAR_CMD:
+            cmd, obj_id, stars = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    self._reflect_window.update_stars(obj_id, int(stars))
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == COMMENT_CMD:
             found_the_object = False
             # Receive a comment and associated reflection ID
             cmd, obj_id, comment = text.split('|', 3)
@@ -722,7 +757,7 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == 'x':
+        elif text[0] == REFLECTION_CMD:
             found_the_object = False
             # Receive a reflection and associated reflection ID
             cmd, obj_id, reflection = text.split('|', 3)
@@ -736,11 +771,11 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == 'p':
+        elif text[0] == PICTURE_CMD:
             # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
             cmd, basename, data = text.split('|', 3)
             utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
-        elif text[0] == 'R':
+        elif text[0] == SHARE_CMD:
             # Joiner needs to load reflection database.
             if not self.initiating:
                 # Note that pictures should be received.

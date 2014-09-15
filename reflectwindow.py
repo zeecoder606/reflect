@@ -12,6 +12,7 @@
 
 import os
 import time
+import json
 from random import uniform
 from gettext import gettext as _
 
@@ -40,6 +41,12 @@ ENTRY_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
 REFLECTION_WIDTH = 8 * style.GRID_CELL_SIZE
+
+TITLE_CMD = 'T'
+STAR_CMD = '*'
+TAG_CMD = 't'
+COMMENT_CMD = 'c'
+REFLECTION_CMD = 'x'
 
 
 class ReflectButtons(Gtk.Alignment):
@@ -194,6 +201,24 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections_grid.attach(eb, 0, row, 4, 1)
         eb.show()
 
+    def update_title(self, obj_id, text):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.update_title(text)
+                break
+
+    def update_stars(self, obj_id, text):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.update_stars(stars)
+                break
+
+    def update_tags(self, obj_id, data):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.add_tags(data)
+                break
+
     def insert_comment(self, obj_id, comment):
         for item in self._reflections:
             if item.obj_id == obj_id:
@@ -265,12 +290,12 @@ class ReflectionGrid(Gtk.EventBox):
         self._title = Gtk.TextView()
         self._title.set_size_request(ENTRY_WIDTH, -1)
         self._title.set_wrap_mode(Gtk.WrapMode.WORD)
-        title_tag = self._title.get_buffer().create_tag(
+        self._title_tag = self._title.get_buffer().create_tag(
             'title', foreground=self._title_color, weight=Pango.Weight.BOLD,
             size=12288)
         iter_text = self._title.get_buffer().get_iter_at_offset(0)
         self._title.get_buffer().insert_with_tags(
-            iter_text, self._reflection.data['title'], title_tag)
+            iter_text, self._reflection.data['title'], self._title_tag)
         if self._reflection.activity.initiating:
             self._title.connect('focus-out-event', self._title_focus_out_cb)
         else:
@@ -316,20 +341,26 @@ class ReflectionGrid(Gtk.EventBox):
             label = _('Add a #tag')
         self._tag_align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
-        tag_view = Gtk.TextView()
-        tag_view.set_size_request(ENTRY_WIDTH, -1)
-        tag_view.set_wrap_mode(Gtk.WrapMode.WORD)
-        tag_view.get_buffer().set_text(label)
+        self._tag_view = Gtk.TextView()
+        self._tag_view.set_size_request(ENTRY_WIDTH, -1)
+        self._tag_view.set_wrap_mode(Gtk.WrapMode.WORD)
+        self._tag_view.get_buffer().set_text(label)
         if self._reflection.activity.initiating:
-            tag_view.get_buffer().connect('insert-text', self._insert_tag_cb)
-            tag_view.connect('focus-in-event', self._tag_focus_in_cb,
-                             _('Add a #tag'))
-            tag_view.connect('focus-out-event', self._tags_focus_out_cb)
+            self._tag_view.connect('focus-in-event', self._tag_focus_in_cb,
+                                   _('Add a #tag'))
+            self._tag_view.connect('focus-out-event', self._tags_focus_out_cb)
         else:
-            tag_view.set_editable(False)
-        self._tag_align.add(tag_view)
-        tag_view.show()
+            self._tag_view.set_editable(False)
+        self._tag_align.add(self._tag_view)
+        self._tag_view.show()
         self._grid.attach(self._tag_align, 1, row, 5, 1)
+
+        if self._reflection.activity.initiating:
+            self._new_tag = EventIcon(icon_name='ok',
+                                      pixel_size=BUTTON_SIZE)
+            self._new_tag.connect('button-press-event',
+                                  self._tag_button_cb)
+            self._grid.attach(self._new_tag, 6, row, 1, 1)
         row += 1
 
         self._activities_align = Gtk.Alignment.new(
@@ -455,6 +486,12 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(self._new_comment, 1, self._comment_row, 5, 1)
 
     def _star_button_cb(self, button, event, n):
+        self.update_stars(n)
+        if self._reflection.activity.sharing:
+            self._reflection.activity.send_event(
+                '%s|%s|%d' % (STAR_CMD, self._reflection.data['obj_id'], n))
+
+    def update_stars(self, n):
         if 'stars' in self._reflection.data:
             oldn = self._reflection.data['stars']
         else:
@@ -477,12 +514,6 @@ class ReflectionGrid(Gtk.EventBox):
             self._reflection.data['stars'] = n + 1
         self._reflection.set_modification_time()
 
-    def _insert_tag_cb(self, textbuffer, textiter, text, length):
-        if '\12' in text:
-            bounds = textbuffer.get_bounds()
-            text = textbuffer.get_text(bounds[0], bounds[1], True)
-            self._process_tags(textbuffer, text)
-
     def _text_focus_in_cb(self, widget, event):
         rgba = Gdk.RGBA()
         rgba.red, rgba.green, rgba.blue = 0.9, 0.9, 0.9
@@ -497,6 +528,11 @@ class ReflectionGrid(Gtk.EventBox):
         rgba.red, rgba.green, rgba.blue = 1., 1., 1.
         rgba.alpha = 1.
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+    def _tag_button_cb(self, button, event):
+        bounds = self._tag_view.get_buffer().get_bounds()
+        text = self._tag_view.get_buffer().get_text(bounds[0], bounds[1], True)
+        self._process_tags(self._tag_view.get_buffer(), text)
 
     def _tag_focus_in_cb(self, widget, event, prompt=None):
         bounds = widget.get_buffer().get_bounds()
@@ -518,6 +554,7 @@ class ReflectionGrid(Gtk.EventBox):
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
     def _process_tags(self, text_buffer, text):
+        ''' process tag data from textview '''
         self._reflection.data['tags'] = []
         label = ''
         tags = text.split()
@@ -533,13 +570,40 @@ class ReflectionGrid(Gtk.EventBox):
                 self._reflection.data['tags'].append('#' + tag)
                 label += '#' + tag
         text_buffer.set_text(label.replace('\12', ''))
+        if self._reflection.activity.sharing:
+            data = json.dumps(self._reflection.data['tags'])
+            self._reflection.activity.send_event(
+                '%s|%s|%s' % (TAG_CMD, self._reflection.data['obj_id'], data))
         self._reflection.set_modification_time()
 
+    def add_tags(self, data):
+        ''' process encoded tag data from share '''
+        tags = json.loads(data)
+        self._reflection.data['tags'] = tags[:]
+        label = ''
+        for tag in tags:
+            if len(label) > 0:
+                label += ', '
+            label += tag
+        self._tag_view.get_buffer().set_text(label)
+
     def _title_focus_out_cb(self, widget, event):
+        ''' process title text from textview '''
         bounds = widget.get_buffer().get_bounds()
         text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
         self._reflection.data['title'] = text
+        if self._reflection.activity.sharing:
+            self._reflection.activity.send_event(
+                '%s|%s|%s' % (TITLE_CMD, self._reflection.data['obj_id'],
+                              text))
         self._reflection.set_modification_time()
+
+    def update_title(self, text):
+        ''' process title text from share '''
+        self._reflection.data['title'] = text
+        iter_text = self._title.get_buffer().get_iter_at_offset(0)
+        self._title.get_buffer().insert_with_tags(
+            iter_text, text, self._title_tag)
 
     def _comment_activate_cb(self, entry):
         text = entry.props.text
@@ -550,7 +614,8 @@ class ReflectionGrid(Gtk.EventBox):
         # Send the comment
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(
-                'c|%s|%s' % (self._reflection.data['obj_id'], text))
+                '%s|%s|%s' % (COMMENT_CMD, self._reflection.data['obj_id'],
+                              text))
         entry.set_text('')
 
     def add_new_comment(self, text):
@@ -576,7 +641,8 @@ class ReflectionGrid(Gtk.EventBox):
         # Send the reflection
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(
-                'x|%s|%s' % (self._reflection.data['obj_id'], text))
+                '%s|%s|%s' % (REFLECTION_CMD, self._reflection.data['obj_id'],
+                              text))
         entry.set_text('')
 
     def add_new_reflection(self, text):
@@ -754,6 +820,8 @@ class ReflectionGrid(Gtk.EventBox):
         self._collapse_id = button.connect('button-press-event',
                                            self._collapse_cb)
         self._tag_align.show()
+        if hasattr(self, '_new_tag'):
+            self._new_tag.show()
         self._stars_align.show()
         for align in self._content_aligns:
             align.show()
@@ -769,6 +837,8 @@ class ReflectionGrid(Gtk.EventBox):
         self._collapse_id = button.connect('button-press-event',
                                            self._expand_cb)
         self._tag_align.hide()
+        if hasattr(self, '_new_tag'):
+            self._new_tag.hide()
         self._stars_align.hide()
         for align in self._content_aligns:
             if not align in self._content_we_always_show:

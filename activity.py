@@ -772,7 +772,7 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == PICTURE_REFLECTION_CMD:
+        elif text[0] == IMAGE_REFLECTION_CMD:
             found_the_object = False
             # Receive a picture reflection and associated reflection ID
             cmd, obj_id, basename = text.split('|', 3)

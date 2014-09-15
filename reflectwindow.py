@@ -827,7 +827,7 @@ class ReflectionGrid(Gtk.EventBox):
                 self._reflection.activity.send_event(
                     '%s|%s|%s' % (PICTURE_CMD, os.path.basename(path), data))
                 self._reflection.activity.send_event(
-                    '%s|%s|%s' % (PICTURE_REFLECTION_CMD,
+                    '%s|%s|%s' % (IMAGE_REFLECTION_CMD,
                                   self._reflection.data['obj_id'],
                                   os.path.basename(path)))
 

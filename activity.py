@@ -695,6 +695,10 @@ class ReflectActivity(activity.Activity):
 
             if self._waiting_for_reflections:
                 self.send_event(JOIN_CMD)
+                self._joined_alert = Alert()
+                self._joined_alert.props.title = _('Please wait')
+                self._joined_alert.props.msg = _('Requesting reflections...')
+                self.add_alert(self._joined_alert)
 
     def event_received_cb(self, text):
         ''' Data is passed as tuples: cmd:text '''
@@ -800,6 +804,9 @@ class ReflectActivity(activity.Activity):
                 self._reflect_window.load(self.reflection_data)
                 self._waiting_for_reflections = False
                 self.reset_cursor()
+                if self._joined_alert is not None:
+                    self.remove_alert(self._joined_alert)
+                    self._joined_alert = None
 
     def send_event(self, entry):
         ''' Send event through the tube. '''

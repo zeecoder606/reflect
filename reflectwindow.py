@@ -47,6 +47,8 @@ STAR_CMD = '*'
 TAG_CMD = 't'
 COMMENT_CMD = 'c'
 REFLECTION_CMD = 'x'
+IMAGE_REFLECTION_CMD = 'P'
+PICTURE_CMD = 'p'
 
 
 class ReflectButtons(Gtk.Alignment):
@@ -229,6 +231,12 @@ class ReflectWindow(Gtk.Alignment):
         for item in self._reflections:
             if item.obj_id == obj_id:
                 item.graphics.add_new_reflection(reflection)
+                break
+
+    def insert_picture(self, obj_id, path):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.add_new_picture(path)
                 break
 
     def _entry_activate_cb(self, entry):
@@ -787,30 +795,41 @@ class ReflectionGrid(Gtk.EventBox):
                 del chooser
 
             if name is not None:
-                obj = None
-                try:
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                        jobject.file_path, PICTURE_WIDTH, PICTURE_HEIGHT)
-                    obj = Gtk.Image.new_from_pixbuf(pixbuf)
-                except:
-                    logging.error('could not open %s' % jobject.file_path)
-
-                if obj is not None:
-                    align = Gtk.Alignment.new(
-                        xalign=0, yalign=0.5, xscale=0, yscale=0)
-                    align.add(obj)
-                    obj.show()
-                    self._grid.insert_row(self._row)
-                    self._grid.attach(align, 1, self._row, 5, 1)
-                    self._row += 1
-                    align.show()
-                    if not 'content' in self._reflection.data:
-                        self._reflection.data['content'] = []
-                    self._reflection.data['content'].append(
-                        {'image': jobject.file_path})
-                    self._reflection.set_modification_time()
+                self.add_new_picture(jobject.file_path)
+                self._reflection.set_modification_time()
 
         self._reflection.activity.reset_cursor()
+
+    def add_new_picture(self, path):
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                path, PICTURE_WIDTH, PICTURE_HEIGHT)
+            obj = Gtk.Image.new_from_pixbuf(pixbuf)
+        except:
+            logging.error('could not open %s' % jobject.file_path)
+            return
+
+        align = Gtk.Alignment.new(
+            xalign=0, yalign=0.5, xscale=0, yscale=0)
+        align.add(obj)
+        obj.show()
+        self._grid.insert_row(self._row)
+        self._grid.attach(align, 1, self._row, 5, 1)
+        self._row += 1
+        align.show()
+        if not 'content' in self._reflection.data:
+            self._reflection.data['content'] = []
+        self._reflection.data['content'].append({'image': path})
+
+        if self._reflection.activity.sharing:
+            if pixbuf is not None:
+                data = utils.pixbuf_to_base64(pixbuf)
+                self._reflection.activity.send_event(
+                    '%s|%s|%s' % (PICTURE_CMD, os.path.basename(path), data))
+                self._reflection.activity.send_event(
+                    '%s|%s|%s' % (PICTURE_REFLECTION_CMD,
+                                  self._reflection.data['obj_id'],
+                                  os.path.basename(path)))
 
     def _expand_cb(self, button, event):
         self._grid.set_row_spacing(style.DEFAULT_SPACING)

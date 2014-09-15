@@ -59,6 +59,7 @@ STAR_CMD = '*'
 TAG_CMD = 't'
 COMMENT_CMD = 'c'
 REFLECTION_CMD = 'x'
+IMAGE_REFLECTION_CMD = 'P'
 PICTURE_CMD = 'p'
 JOIN_CMD = 'r'
 SHARE_CMD = 'R'
@@ -768,6 +769,22 @@ class ReflectActivity(activity.Activity):
                         item['content'] = []
                     item['content'].append({'text': reflection})
                     self._reflect_window.insert_reflection(obj_id, reflection)
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == PICTURE_REFLECTION_CMD:
+            found_the_object = False
+            # Receive a picture reflection and associated reflection ID
+            cmd, obj_id, basename = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    if not '' in item:
+                        item['content'] = []
+                    item['content'].append(
+                        {'image': os.path.join(self.tmp_path, basename)})
+                    self._reflect_window.insert_picture(
+                        obj_id, os.path.join(self.tmp_path, basename))
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)

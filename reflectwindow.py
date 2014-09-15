@@ -795,8 +795,16 @@ class ReflectionGrid(Gtk.EventBox):
                 del chooser
 
             if name is not None:
-                self.add_new_picture(jobject.file_path)
+                pixbuf = self.add_new_picture(jobject.file_path)
                 self._reflection.set_modification_time()
+                if self._reflection.activity.sharing and pixbuf is not None:
+                    self._reflection.activity.send_event(
+                        '%s|%s|%s' % (PICTURE_CMD, os.path.basename(path),
+                                      utils.pixbuf_to_base64(pixbuf)))
+                    self._reflection.activity.send_event(
+                        '%s|%s|%s' % (IMAGE_REFLECTION_CMD,
+                                      self._reflection.data['obj_id'],
+                                      os.path.basename(jobject.file_path)))
 
         self._reflection.activity.reset_cursor()
 
@@ -807,7 +815,7 @@ class ReflectionGrid(Gtk.EventBox):
             obj = Gtk.Image.new_from_pixbuf(pixbuf)
         except:
             logging.error('could not open %s' % jobject.file_path)
-            return
+            return None
 
         align = Gtk.Alignment.new(
             xalign=0, yalign=0.5, xscale=0, yscale=0)
@@ -822,14 +830,8 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection.data['content'].append({'image': path})
 
         if self._reflection.activity.sharing:
-            if pixbuf is not None:
-                data = utils.pixbuf_to_base64(pixbuf)
-                self._reflection.activity.send_event(
-                    '%s|%s|%s' % (PICTURE_CMD, os.path.basename(path), data))
-                self._reflection.activity.send_event(
-                    '%s|%s|%s' % (IMAGE_REFLECTION_CMD,
-                                  self._reflection.data['obj_id'],
-                                  os.path.basename(path)))
+            return pixbuf
+
 
     def _expand_cb(self, button, event):
         self._grid.set_row_spacing(style.DEFAULT_SPACING)

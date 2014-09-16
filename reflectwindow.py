@@ -227,6 +227,7 @@ class ReflectWindow(Gtk.Alignment):
         for item in self._reflections:
             if item.obj_id == obj_id:
                 item.graphics.add_new_comment(comment)
+                item.graphics.notify_button.show()
                 break
 
     def insert_activity(self, obj_id, bundle_id):
@@ -334,6 +335,11 @@ class ReflectionGrid(Gtk.EventBox):
         self._title.show()
         self._grid.attach(self._title_align, 1, row, 5, 1)
         self._title_align.show()
+
+        ''' Notification that a new comment has been shared. '''
+        self.notify_button = EventIcon(icon_name='chat',
+                                        pixel_size=BUTTON_SIZE)
+        self._grid.attach(self.notify_button, 6, row, 1, 1)
         row += 1
 
         self._time_align = Gtk.Alignment.new(

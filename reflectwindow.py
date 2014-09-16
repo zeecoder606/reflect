@@ -25,6 +25,7 @@ from gi.repository import Pango
 
 from sugar3.graphics import style
 from sugar3.graphics.icon import CanvasIcon, EventIcon
+from sugar3.datastore import datastore
 from sugar3 import profile
 from sugar3 import util
 
@@ -134,6 +135,28 @@ class ReflectWindow(Gtk.Alignment):
             if item.obj_id == obj_id:
                 item.graphics.add_new_comment(comment)
                 item.graphics.notify_button.show()
+                # Update journal entry
+                if obj_id[0:4] == 'obj-':
+                    break
+                try:
+                    dsobj = datastore.get(obj_id)
+                except Exception as e:
+                    logging.error('Could not open %s: %e' % (obj_id, e))
+                    break
+                if 'comments' in dsobj.metadata:
+                    data = json.loads(dsobj.metadata['comments'])
+                else:
+                    data = []
+                data.append({'from': comment['nick'],
+                             'message': comment['comment'],
+                             'icon-color': '%s,%s' % (
+                                 comment['color'], comment['color'])
+                           })
+                dsobj.metadata['comments'] = json.dumps(data)
+                datastore.write(dsobj,
+                                update_mtime=False,
+                                reply_handler=self.datastore_write_cb,
+                                error_handler=self.datastore_write_error_cb)
                 break
 
     def insert_activity(self, obj_id, bundle_id):
@@ -412,8 +435,6 @@ class ReflectionGrid(Gtk.EventBox):
                 obj.set_editable(False)
                 obj.set_size_request(ENTRY_WIDTH, -1)
                 obj.set_wrap_mode(Gtk.WrapMode.WORD)
-
-                logging.debug(comment)
                 nick_tag = obj.get_buffer().create_tag(
                     'nick', foreground=comment['color'],
                     weight=Pango.Weight.BOLD)
@@ -526,6 +547,15 @@ class ReflectionGrid(Gtk.EventBox):
                 '%s|%s|%s' % (TAG_CMD, self._reflection.data['obj_id'], data))
         self._reflection.set_modification_time()
 
+        # Update journal entry
+        dsobj = datastore.get(self._reflection.data['obj_id'])
+        logging.error('setting tags to %s' % label)
+        dsobj.metadata['tags'] = label
+        datastore.write(dsobj,
+                        update_mtime=False,
+                        reply_handler=self.datastore_write_cb,
+                        error_handler=self.datastore_write_error_cb)
+
     def add_tags(self, data):
         ''' process encoded tag data from share '''
         tags = json.loads(data)
@@ -547,6 +577,20 @@ class ReflectionGrid(Gtk.EventBox):
                 '%s|%s|%s' % (TITLE_CMD, self._reflection.data['obj_id'],
                               text))
         self._reflection.set_modification_time()
+
+        # Update journal entry
+        dsobj = datastore.get(self._reflection.data['obj_id'])
+        dsobj.metadata['title'] = text
+        datastore.write(dsobj,
+                        update_mtime=False,
+                        reply_handler=self.datastore_write_cb,
+                        error_handler=self.datastore_write_error_cb)
+
+    def datastore_write_cb(self):
+        logging.debug('ds write cb')
+
+    def datastore_write_error_cb(self, error):
+        logging.error('datastore_write_error_cb: %r' % error)
 
     def update_title(self, text):
         ''' process title text from share '''
@@ -574,6 +618,21 @@ class ReflectionGrid(Gtk.EventBox):
                                     data['color'],
                                     data['comment']))
         entry.set_text('')
+
+        # Update journal entry
+        dsobj = datastore.get(self._reflection.data['obj_id'])
+        if 'comments' in dsobj.metadata:
+            data = json.loads(dsobj.metadata['comments'])
+        else:
+            data = []
+        data.append({'from': profile.get_nick_name(),
+                     'message': text,
+                     'icon-color': profile.get_color().to_string()})
+        dsobj.metadata['comments'] = json.dumps(data)
+        datastore.write(dsobj,
+                        update_mtime=False,
+                        reply_handler=self.datastore_write_cb,
+                        error_handler=self.datastore_write_error_cb)
 
     def add_new_comment(self, comment):
         obj = Gtk.TextView()

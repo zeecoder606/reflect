@@ -54,6 +54,7 @@ SERVICE = 'org.sugarlabs.Reflect'
 IFACE = SERVICE
 PATH = '/org/sugarlabs/Reflect'
 
+NEW_REFLECTION_CMD = 'N'
 TITLE_CMD = 'T'
 STAR_CMD = '*'
 TAG_CMD = 't'
@@ -63,6 +64,8 @@ IMAGE_REFLECTION_CMD = 'P'
 PICTURE_CMD = 'p'
 JOIN_CMD = 'r'
 SHARE_CMD = 'R'
+ACTIVITY_CMD = 'a'
+
 
 class ReflectActivity(activity.Activity):
     ''' An activity for reflecting on one's work '''
@@ -716,11 +719,15 @@ class ReflectActivity(activity.Activity):
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
                                 self.send_event(
-                                    PICTURE_CMD + '|' +
-                                    os.path.basename(content['image']) + '|' +
-                                    data)
+                                    '%s|%s|%s' %
+                                    (PICTURE_CMD,
+                                     os.path.basename(content['image']),
+                                     data))
                 data = json.dumps(self.reflection_data)
                 self.send_event(SHARE_CMD + data)
+        elif text[0] == NEW_REFLECTION_CMD:
+            cmd, data = text.split('|', 2)
+            self._reflect_window.add_new_reflection(data)
         elif text[0] == TITLE_CMD:
             cmd, obj_id, title = text.split('|', 3)
             for item in self.reflection_data:
@@ -736,6 +743,15 @@ class ReflectActivity(activity.Activity):
                 if item['obj_id'] == obj_id:
                     found_the_object = True
                     self._reflect_window.update_tags(obj_id, data)
+                    break
+            if not found_the_object:
+                logging.error('Could not find obj_id %s' % obj_id)
+        elif text[0] == ACTIVITY_CMD:
+            cmd, obj_id, bundle_id = text.split('|', 3)
+            for item in self.reflection_data:
+                if item['obj_id'] == obj_id:
+                    found_the_object = True
+                    self._reflect_window.insert_activity(obj_id, bundle_id)
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)

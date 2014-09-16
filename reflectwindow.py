@@ -42,6 +42,7 @@ PICTURE_WIDTH = 6 * style.GRID_CELL_SIZE
 PICTURE_HEIGHT = int(4.5 * style.GRID_CELL_SIZE)
 REFLECTION_WIDTH = 8 * style.GRID_CELL_SIZE
 
+NEW_REFLECTION_CMD = 'N'
 TITLE_CMD = 'T'
 STAR_CMD = '*'
 TAG_CMD = 't'
@@ -49,6 +50,7 @@ COMMENT_CMD = 'c'
 REFLECTION_CMD = 'x'
 IMAGE_REFLECTION_CMD = 'P'
 PICTURE_CMD = 'p'
+ACTIVITY_CMD = 'a'
 
 
 class ReflectButtons(Gtk.Alignment):
@@ -227,6 +229,12 @@ class ReflectWindow(Gtk.Alignment):
                 item.graphics.add_new_comment(comment)
                 break
 
+    def insert_activity(self, obj_id, bundle_id):
+        for item in self._reflections:
+            if item.obj_id == obj_id:
+                item.graphics.add_activity(bundle_id)
+                break
+
     def insert_reflection(self, obj_id, reflection):
         for item in self._reflections:
             if item.obj_id == obj_id:
@@ -242,9 +250,8 @@ class ReflectWindow(Gtk.Alignment):
     def _entry_activate_cb(self, entry):
         text = entry.props.text
         self._activity.reflection_data.insert(0, {'title': text})
-        reflection = Reflection(
-            self._activity,
-            self._activity.reflection_data[0])
+        reflection = Reflection(self._activity,
+                                self._activity.reflection_data[0])
         reflection.set_title(text)
         reflection.set_creation_time()
         reflection.set_obj_id(generate=True)
@@ -257,6 +264,16 @@ class ReflectWindow(Gtk.Alignment):
         reflection.refresh()
         self._reflections.append(reflection)
         entry.set_text('')
+        if self._activity.sharing:
+            data = json.dumps(reflection_data[0])
+            self._activity.send_event(
+                '%s|%s' % (NEW_REFLECTION_CMD, data))
+
+    def add_new_reflection(self, data):
+        reflection = json.loads(data)
+        self._activity.reflection_data.insert(0, reflection)
+        reflection = Reflection(self._activity,
+                                self._activity.reflection_data[0])
 
     def keypress_cb(self, widget, event):
         self.keyname = Gdk.keyval_name(event.keyval)
@@ -703,10 +720,17 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection.activity.reset_cursor()
 
     def _insert_activity(self, widget, bundle_id):
-        logging.debug(bundle_id)
-        # self._activity_sw.hide()
+        ''' Add activity from UI '''
         self._reflection.activity.hide_overlay_area()
+        self.add_activity(bundle_id)
+        if self._reflection.activity.sharing:
+            self._reflection.activity.send_event(
+                '%s|%s|%s' % (ACTIVITY_CMD,
+                              os.path.basename(jobject.file_path),
+                              bundle_id))
 
+    def add_activity(self, bundle_id):
+        ''' Add activity from sharer '''
         if not 'activities' in self._reflection.data:
             self._reflection.data['activities'] = []
         self._reflection.data['activities'].append(

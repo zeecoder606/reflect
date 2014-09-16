@@ -83,7 +83,6 @@ class ReflectActivity(activity.Activity):
         self.connect('realize', self.__realize_cb)
 
         self.font_size = 8
-        self.zoom_level = self.font_size / float(len(FONT_SIZES))
 
         self.max_participants = 4
         self._setup_toolbars()
@@ -344,22 +343,6 @@ class ReflectActivity(activity.Activity):
         self._fixed.move(
             self._overlay_window, 0, Gdk.Screen.height())
 
-    def _load_intro_graphics(self, file_name='generic-problem.html',
-                             message=None):
-        center_in_panel = Gtk.Alignment.new(0.5, 0, 0, 0)
-        url = os.path.join(self.bundle_path, 'html-content', file_name)
-        graphics = Graphics()
-        if message is None:
-            graphics.add_uri('file://' + url)
-        else:
-            graphics.add_uri('file://' + url + '?MSG=' +
-                             utils.get_safe_text(message))
-        graphics.set_zoom_level(0.667)
-        center_in_panel.add(graphics)
-        graphics.show()
-        self.set_canvas(center_in_panel)
-        center_in_panel.show()
-
     def _resize_hide_cb(self, widget):
         self._resize_canvas(widget, True)
 
@@ -456,26 +439,6 @@ class ReflectActivity(activity.Activity):
         button.show()
         button.connect('clicked', self._fullscreen_cb)
 
-        self._zoom_in = ToolButton('zoom-in')
-        self._zoom_in.set_tooltip(_('Increase size'))
-        view_toolbar.insert(self._zoom_in, -1)
-        self._zoom_in.show()
-        self._zoom_in.connect('clicked', self._zoom_in_cb)
-
-        self._zoom_out = ToolButton('zoom-out')
-        self._zoom_out.set_tooltip(_('Decrease size'))
-        view_toolbar.insert(self._zoom_out, -1)
-        self._zoom_out.show()
-        self._zoom_out.connect('clicked', self._zoom_out_cb)
-
-        self._zoom_eq = ToolButton('zoom-original')
-        self._zoom_eq.set_tooltip(_('Restore original size'))
-        view_toolbar.insert(self._zoom_eq, -1)
-        self._zoom_eq.show()
-        self._zoom_eq.connect('clicked', self._zoom_eq_cb)
-
-        self._set_zoom_buttons_sensitivity()
-
         edit_toolbar = Gtk.Toolbar()
         self.edit_toolbar_button = ToolbarButton(
             page=edit_toolbar,
@@ -557,46 +520,13 @@ class ReflectActivity(activity.Activity):
         ''' Hide the Sugar toolbars. '''
         self.fullscreen()
 
-    def _set_zoom_buttons_sensitivity(self):
-        if self.font_size < len(FONT_SIZES) - 1:
-            self._zoom_in.set_sensitive(True)
-        else:
-            self._zoom_in.set_sensitive(False)
-        if self.font_size > 0:
-            self._zoom_out.set_sensitive(True)
-        else:
-            self._zoom_out.set_sensitive(False)
-
-        if hasattr(self, '_scrolled_window'):
-            self._set_scroll_policy()
-
     def _set_scroll_policy(self):
-        if Gdk.Screen.width() < Gdk.Screen.height() or self.zoom_level > 0.667:
+        if Gdk.Screen.width() < Gdk.Screen.height():
             self._scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC,
                                              Gtk.PolicyType.AUTOMATIC)
         else:
             self._scrolled_window.set_policy(Gtk.PolicyType.NEVER,
                                              Gtk.PolicyType.AUTOMATIC)
-
-    def _zoom_eq_cb(self, button):
-        self.font_size = 8
-        self.zoom_level = 0.667
-        self._set_zoom_buttons_sensitivity()
-        self._reflect_window.reload_graphics()
-
-    def _zoom_in_cb(self, button):
-        if self.font_size < len(FONT_SIZES) - 1:
-            self.font_size += 1
-            self.zoom_level *= 1.1
-        self._set_zoom_buttons_sensitivity()
-        self._reflect_window.reload_graphics()
-
-    def _zoom_out_cb(self, button):
-        if self.font_size > 0:
-            self.font_size -= 1
-            self.zoom_level /= 1.1
-        self._set_zoom_buttons_sensitivity()
-        self._reflect_window.reload_graphics()
 
     def _remove_alert_cb(self, alert, response_id):
         self.remove_alert(alert)

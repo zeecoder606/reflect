@@ -270,10 +270,15 @@ class ReflectWindow(Gtk.Alignment):
                 '%s|%s' % (NEW_REFLECTION_CMD, data))
 
     def add_new_reflection(self, data):
-        reflection = json.loads(data)
-        self._activity.reflection_data.insert(0, reflection)
+        reflection_data = json.loads(data)
+        self._activity.reflection_data.insert(0, reflection_data)
         reflection = Reflection(self._activity,
                                 self._activity.reflection_data[0])
+        self._reflections_grid.insert_row(0)
+        self._reflections_grid.attach(
+            reflection.get_graphics(), 0, 1, 3, 1)
+        reflection.refresh()
+        self._reflections.append(reflection)
 
     def keypress_cb(self, widget, event):
         self.keyname = Gdk.keyval_name(event.keyval)

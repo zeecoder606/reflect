@@ -626,6 +626,7 @@ class ReflectionGrid(Gtk.EventBox):
     def update_title(self, text):
         ''' process title text from share '''
         self._reflection.data['title'] = text
+        self._title.get_buffer().set_text('')
         iter_text = self._title.get_buffer().get_iter_at_offset(0)
         self._title.get_buffer().insert_with_tags(
             iter_text, text, self._title_tag)
@@ -726,7 +727,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(
                 '%s|%s|%s' % (ACTIVITY_CMD,
-                              os.path.basename(jobject.file_path),
+                              self._reflection.data['obj_id'],
                               bundle_id))
 
     def add_activity(self, bundle_id):

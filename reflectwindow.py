@@ -265,7 +265,7 @@ class ReflectWindow(Gtk.Alignment):
         self._reflections.append(reflection)
         entry.set_text('')
         if self._activity.sharing:
-            data = json.dumps(reflection_data[0])
+            data = json.dumps(self._activity.reflection_data[0])
             self._activity.send_event(
                 '%s|%s' % (NEW_REFLECTION_CMD, data))
 

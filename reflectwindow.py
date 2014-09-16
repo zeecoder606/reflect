@@ -53,54 +53,6 @@ PICTURE_CMD = 'p'
 ACTIVITY_CMD = 'a'
 
 
-class ReflectButtons(Gtk.Alignment):
-
-    def __init__(self, activity):
-        cssProvider = Gtk.CssProvider()
-        cssProvider.load_from_path('style.css')
-        screen = Gdk.Screen.get_default()
-        styleContext = Gtk.StyleContext()
-        styleContext.add_provider_for_screen(screen, cssProvider,
-                                             Gtk.STYLE_PROVIDER_PRIORITY_USER)
-
-        Gtk.Alignment.__init__(self)
-        self._activity = activity
-
-        self.set_size_request(Gdk.Screen.width() - style.GRID_CELL_SIZE,
-                              style.GRID_CELL_SIZE)
-        self._graphics_grid = Gtk.Grid()
-        self._graphics_grid.set_row_spacing(style.DEFAULT_SPACING)
-        self._graphics_grid.set_column_spacing(style.DEFAULT_SPACING)
-
-        self.set(xalign=0.5, yalign=0, xscale=0, yscale=0)
-        self.add(self._graphics_grid)
-        self._graphics_grid.show()
-
-        self._activity.load_button_area(self)
-
-        # Start with title, date, activity and scrolling window of entries
-        align = Gtk.Alignment.new(xalign=0.5, yalign=0.5, xscale=0, yscale=0)
-        button_grid = Gtk.Grid()
-        button_grid.set_row_spacing(style.DEFAULT_SPACING)
-        button_grid.set_column_spacing(style.DEFAULT_SPACING)
-        button_grid.set_column_homogeneous(True)
-
-        # FIX ME: Need a tag to search on
-        self._search_button = Gtk.Button(_('Search'), name='next-button')
-        self._search_button.connect('clicked', self._search_button_cb)
-        button_grid.attach(self._search_button, 3, 0, 1, 1)
-        self._search_button.show()
-
-        align.add(button_grid)
-        button_grid.show()
-        self._graphics_grid.attach(align, 1, 0, 1, 1)
-        align.show()
-
-    def _search_button_cb(self, button):
-        ''' search by #tag '''
-        logging.debug('search button pressed')
-
-
 class ReflectWindow(Gtk.Alignment):
 
     def __init__(self, activity):
@@ -124,10 +76,13 @@ class ReflectWindow(Gtk.Alignment):
             entry = Gtk.Entry()
             entry.props.placeholder_text = _('Add a reflection')
             entry.connect('activate', self._entry_activate_cb)
-            self._reflections_grid.attach(entry, 0, 0, 4, 1)
+            self._reflections_grid.attach(entry, 0, 0, 1, 1)
             entry.show()
 
     def reload(self, reflection_data):
+        logging.debug('reloading reflection data')
+        for reflection in self._reflections:
+            reflection.graphics.hide()
         self.load(reflection_data)
 
     def load(self, reflection_data):
@@ -140,7 +95,7 @@ class ReflectWindow(Gtk.Alignment):
             reflection = Reflection(self._activity, item)
             reflection.set_obj_id()
             self._reflections_grid.attach(
-                reflection.get_graphics(), 0, row, 4, 1)
+                reflection.get_graphics(), 0, row, 1, 1)
             reflection.refresh()
             self._reflections.append(reflection)
             row += 1
@@ -153,7 +108,7 @@ class ReflectWindow(Gtk.Alignment):
         box.set_size_request(ENTRY_WIDTH, int(Gdk.Screen.height() / 2))
         eb.add(box)
         box.show()
-        self._reflections_grid.attach(eb, 0, row, 4, 1)
+        self._reflections_grid.attach(eb, 0, row, 1, 1)
         eb.show()
 
     def update_title(self, obj_id, text):
@@ -212,7 +167,7 @@ class ReflectWindow(Gtk.Alignment):
         reflection.set_stars(0)
         self._reflections_grid.insert_row(1)
         self._reflections_grid.attach(
-            reflection.get_graphics(), 0, 1, 3, 1)
+            reflection.get_graphics(), 0, 1, 1, 1)
         reflection.refresh()
         self._reflections.append(reflection)
         entry.set_text('')
@@ -228,7 +183,7 @@ class ReflectWindow(Gtk.Alignment):
                                 self._activity.reflection_data[0])
         self._reflections_grid.insert_row(0)
         self._reflections_grid.attach(
-            reflection.get_graphics(), 0, 1, 3, 1)
+            reflection.get_graphics(), 0, 1, 1, 1)
         reflection.refresh()
         self._reflections.append(reflection)
 
@@ -866,6 +821,9 @@ class Reflection():
         self.modification_time = None
         self.obj_id = None
 
+    def set_hidden(self, hidden):
+        self.data['hidden'] = hidden
+
     def set_title(self, title):
         self.data['title'] = title
 
@@ -926,4 +884,7 @@ class Reflection():
     def refresh(self):
         ''' redraw graphics with updated content '''
         self.graphics.set_size_request(REFLECTION_WIDTH, -1)
-        self.graphics.show()
+        if 'hidden' in self.data and self.data['hidden']:
+            self.graphics.hide()
+        else:
+            self.graphics.show()

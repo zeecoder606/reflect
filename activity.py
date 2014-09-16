@@ -31,6 +31,7 @@ from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.radiotoolbutton import RadioToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
+from sugar3.graphics import iconentry
 from sugar3.graphics.alert import NotifyAlert, Alert
 from sugar3.graphics.icon import Icon
 from sugar3.graphics import style
@@ -44,7 +45,7 @@ from dbus.gobject_service import ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.presence.tubeconn import TubeConnection
 
-from reflectwindow import ReflectButtons, ReflectWindow
+from reflectwindow import ReflectWindow
 from graphics import Graphics, FONT_SIZES
 import utils
 
@@ -296,9 +297,6 @@ class ReflectActivity(activity.Activity):
             self._overlay_window.show()
             self._old_overlay_widget = None
 
-            self._reflect_buttons = ReflectButtons(self)
-            self._reflect_buttons.show()
-
             self._reflect_window = ReflectWindow(self)
             self._reflect_window.show()
 
@@ -483,6 +481,26 @@ class ReflectActivity(activity.Activity):
         self._toolbox.toolbar.insert(self._stars_button, -1)
         self._stars_button.show()
 
+        # setup the search options
+        self._search_entry = iconentry.IconEntry()
+        self._search_entry.set_icon_from_name(iconentry.ICON_ENTRY_PRIMARY,
+                                              'system-search')
+        self._search_entry.connect('activate', self._search_entry_activated_cb)
+        self._search_entry.connect('changed', self._search_entry_changed_cb)
+        self._search_entry.add_clear_button()
+
+        tool_item = Gtk.ToolItem()
+        tool_item.set_expand(True)
+        tool_item.add(self._search_entry)
+        self._search_entry.show()
+        self._toolbox.toolbar.insert(tool_item, -1)
+        tool_item.show()
+
+        self._search_button = ToolButton('dialog-ok')
+        self._search_button.connect('clicked', self._search_button_cb)
+        self._toolbox.toolbar.insert(self._search_button, -1)
+        self._search_button.show()
+
         separator = Gtk.SeparatorToolItem()
         separator.props.draw = False
         separator.set_expand(True)
@@ -493,6 +511,50 @@ class ReflectActivity(activity.Activity):
         stop_button.props.accelerator = '<Ctrl>q'
         self._toolbox.toolbar.insert(stop_button, -1)
         stop_button.show()
+
+    def _search_button_cb(self, button):
+        self.busy_cursor()
+        self._do_search()
+
+    def _search_entry_activated_cb(self, entry):
+        self.busy_cursor()
+        self._do_search()
+
+    def _do_search(self):
+        logging.debug('_search_entry_activated_cb')
+        if self._search_entry.props.text == '':
+            logging.debug('clearing search')
+            for item in self.reflection_data:
+                item['hidden'] = False
+        else:
+            tags = self._search_entry.props.text.split()
+            for i, tag in enumerate(tags):
+                if not tag[0] == '#':
+                    tags[i] = '#%s' % tag
+            logging.error(tags)
+            for item in self.reflection_data:
+                hidden = True
+                if 'tags' in item:
+                    for tag in tags:
+                        if tag in item['tags']:
+                            hidden = False
+                item['hidden'] = hidden
+        self.reload_data(self.reflection_data)
+        self.reset_cursor()
+
+    def _search_entry_changed_cb(self, entry):
+        logging.debug('_search_entry_changed_cb search for \'%s\'',
+                     self._search_entry.props.text)
+        self.busy_cursor()
+        self._do_search_changed()
+
+    def _do_search_changed(self):
+        if self._search_entry.props.text == '':
+            logging.debug('clearing search')
+            for item in self.reflection_data:
+                item['hidden'] = False
+            self.reload_data(self.reflection_data)
+        self.reset_cursor()
 
     def _title_button_cb(self, button):
         ''' sort by title '''

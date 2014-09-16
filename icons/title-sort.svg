@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   width="55"
+   height="55"
+   id="svg2">
+  <metadata
+     id="metadata33">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs4">
+    <mask
+       id="Mask">
+      <rect
+         width="55"
+         height="55"
+         x="0"
+         y="0"
+         id="rect7"
+         style="fill:#ffffff;stroke:none" />
+      <line
+         x1="11"
+         y1="19"
+         x2="16"
+         y2="19"
+         stroke="#000000"
+         stroke-width="2.5"
+         id="line9"
+         style="stroke:#000000;stroke-width:2.5" />
+      <line
+         x1="18"
+         y1="19"
+         x2="22"
+         y2="19"
+         stroke="#000000"
+         stroke-width="2.5"
+         id="line11"
+         style="stroke:#000000;stroke-width:2.5" />
+      <line
+         x1="11"
+         y1="24"
+         x2="13"
+         y2="24"
+         stroke="#000000"
+         stroke-width="2.5"
+         id="line13"
+         style="stroke:#000000;stroke-width:2.5" />
+      <line
+         x1="15"
+         y1="24"
+         x2="18"
+         y2="24"
+         stroke="#000000"
+         stroke-width="2.5"
+         id="line15"
+         style="stroke:#000000;stroke-width:2.5" />
+      <line
+         x1="11"
+         y1="29"
+         x2="14"
+         y2="29"
+         stroke="#000000"
+         stroke-width="2.5"
+         id="line17"
+         style="stroke:#000000;stroke-width:2.5" />
+      <path
+         d="m 17,35 2,-6 19,-19 4,3 -19,19 z"
+         id="path19"
+         style="fill:#000000;stroke:#000000;stroke-width:3" />
+    </mask>
+  </defs>
+  <path
+     d="m 46,17 7,7 -14,0 z"
+     id="path27"
+     style="fill:#ffffff;stroke:none" />
+  <path
+     d="m 46,38 7,-7 -14,0 z"
+     id="path29"
+     style="fill:#ffffff;stroke:none" />
+  <rect
+     width="25"
+     height="27"
+     x="8"
+     y="14"
+     id="rect3848"
+     style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none" />
+  <text
+     x="20.296875"
+     y="25.664062"
+     id="text3780"
+     xml:space="preserve"
+     style="font-size:16px;font-style:normal;font-weight:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"><tspan
+       x="20.296875"
+       y="25.664062"
+       id="tspan3782"
+       style="font-weight:bold;fill:#ffffff;fill-opacity:1;-inkscape-font-specification:Sans Bold">A</tspan></text>
+  <text
+     x="33.726562"
+     y="41"
+     id="text3784"
+     xml:space="preserve"
+     style="font-size:16px;font-style:normal;font-weight:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"><tspan
+       x="33.726562"
+       y="41"
+       id="tspan3786"
+       style="font-weight:bold;fill:#ffffff;fill-opacity:0.94117647;-inkscape-font-specification:Sans Bold">Z</tspan></text>
+</svg>

@@ -28,6 +28,7 @@ from sugar3.activity import activity
 from sugar3.activity.widgets import StopButton
 from sugar3.activity.widgets import ActivityToolbarButton
 from sugar3.graphics.toolbutton import ToolButton
+from sugar3.graphics.radiotoolbutton import RadioToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics.alert import NotifyAlert, Alert
@@ -465,6 +466,23 @@ class ReflectActivity(activity.Activity):
         self._paste_button.connect('clicked', self._paste_cb)
         self._paste_button.set_sensitive(False)
 
+        self._date_button = RadioToolButton('date-sort', group=None)
+        self._date_button.connect('clicked', self._date_button_cb)
+        self._toolbox.toolbar.insert(self._date_button, -1)
+        self._date_button.show()
+
+        self._title_button = RadioToolButton('title-sort',
+                                             group=self._date_button)
+        self._title_button.connect('clicked', self._title_button_cb)
+        self._toolbox.toolbar.insert(self._title_button, -1)
+        self._title_button.show()
+
+        self._stars_button = RadioToolButton('stars-sort',
+                                             group=self._date_button)
+        self._stars_button.connect('clicked', self._stars_button_cb)
+        self._toolbox.toolbar.insert(self._stars_button, -1)
+        self._stars_button.show()
+
         separator = Gtk.SeparatorToolItem()
         separator.props.draw = False
         separator.set_expand(True)
@@ -475,6 +493,40 @@ class ReflectActivity(activity.Activity):
         stop_button.props.accelerator = '<Ctrl>q'
         self._toolbox.toolbar.insert(stop_button, -1)
         stop_button.show()
+
+    def _title_button_cb(self, button):
+        ''' sort by title '''
+        self.busy_cursor()
+        GObject.idle_add(self._title_sort)
+
+    def _title_sort(self):
+        sorted_data = sorted(self.reflection_data,
+                             key=lambda item: item['title'].lower())
+        self.reload_data(sorted_data)
+        self.reset_cursor()
+
+    def _date_button_cb(self, button):
+        ''' sort by modification date '''
+        self.busy_cursor()
+        GObject.idle_add(self._date_sort)
+
+    def _date_sort(self):
+        sorted_data = sorted(self.reflection_data,
+                             key=lambda item: int(item['modification_time']),
+                             reverse=True)
+        self.reload_data(sorted_data)
+        self.reset_cursor()
+
+    def _stars_button_cb(self, button):
+        ''' sort by number of stars '''
+        self.busy_cursor()
+        GObject.idle_add(self._stars_sort)
+
+    def _stars_sort(self):
+        sorted_data = sorted(self.reflection_data,
+                             key=lambda item: item['stars'], reverse=True)
+        self.reload_data(sorted_data)
+        self.reset_cursor()
 
     def __realize_cb(self, window):
         self.window_xid = window.get_window().get_xid()

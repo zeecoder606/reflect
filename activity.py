@@ -221,9 +221,15 @@ class ReflectActivity(activity.Activity):
                     self.reflection_data[-1]['comments'] = []
                     for comment in comments:
                         try:
-                            self.reflection_data[-1]['comments'].append(
-                                '%s: %s' %
-                                (comment['from'], comment['message']))
+                            data = {'nick': comment['from'],
+                                    'comment': comment['message']}
+                            if 'icon-color' in comment:
+                                colors = comment['icon-color'].split(',')
+                                darker = 1 - utils.lighter_color(colors)
+                                data['color'] = colors[darker]
+                            else:
+                                data['color'] = '#000000'
+                            self.reflection_data[-1]['comments'].append(data)
                         except:
                             _logger.debug('could not parse comment %s'
                                           % comment)
@@ -811,14 +817,15 @@ class ReflectActivity(activity.Activity):
         elif text[0] == COMMENT_CMD:
             found_the_object = False
             # Receive a comment and associated reflection ID
-            cmd, obj_id, comment = text.split('|', 3)
+            cmd, obj_id, nick, color, comment = text.split('|', 5)
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
                     if not 'comments' in item:
                         item['comments'] = []
-                    item['comments'].append(comment)
-                    self._reflect_window.insert_comment(obj_id, comment)
+                    data = {'nick': nick, 'comment': comment, 'color': color}
+                    item['comments'].append(data)
+                    self._reflect_window.insert_comment(obj_id, data)
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)

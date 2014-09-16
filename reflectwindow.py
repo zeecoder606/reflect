@@ -408,12 +408,20 @@ class ReflectionGrid(Gtk.EventBox):
         self._comment_aligns = []
         if 'comments' in self._reflection.data:
             for comment in self._reflection.data['comments']:
-                # TODO: Add icon
                 obj = Gtk.TextView()
                 obj.set_editable(False)
                 obj.set_size_request(ENTRY_WIDTH, -1)
                 obj.set_wrap_mode(Gtk.WrapMode.WORD)
-                obj.get_buffer().set_text(comment)
+
+                logging.debug(comment)
+                nick_tag = obj.get_buffer().create_tag(
+                    'nick', foreground=comment['color'],
+                    weight=Pango.Weight.BOLD)
+                iter_text = obj.get_buffer().get_iter_at_offset(0)
+                obj.get_buffer().insert_with_tags(
+                    iter_text, comment['nick'] + ': ', nick_tag)
+                iter_text = obj.get_buffer().get_end_iter()
+                obj.get_buffer().insert(iter_text, comment['comment'])
 
                 align = Gtk.Alignment.new(
                     xalign=0, yalign=0.5, xscale=0, yscale=0)
@@ -552,20 +560,35 @@ class ReflectionGrid(Gtk.EventBox):
         text = entry.props.text
         if not 'comments' in self._reflection.data:
             self._reflection.data['comments'] = []
-        self._reflection.data['comments'].append(text)
-        self.add_new_comment(text)
+        data = {'nick': profile.get_nick_name(),
+                'color': self._reflection.activity.fg_color.get_html(),
+                'comment': text}
+        self._reflection.data['comments'].append(data)
+        self.add_new_comment(data)
         # Send the comment
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(
-                '%s|%s|%s' % (COMMENT_CMD, self._reflection.data['obj_id'],
-                              text))
+                '%s|%s|%s|%s|%s' % (COMMENT_CMD,
+                                    self._reflection.data['obj_id'],
+                                    data['nick'],
+                                    data['color'],
+                                    data['comment']))
         entry.set_text('')
 
-    def add_new_comment(self, text):
+    def add_new_comment(self, comment):
         obj = Gtk.TextView()
         obj.set_size_request(ENTRY_WIDTH, -1)
         obj.set_wrap_mode(Gtk.WrapMode.WORD)
-        obj.get_buffer().set_text(text)
+
+        nick_tag = obj.get_buffer().create_tag(
+            'nick', foreground=comment['color'],
+            weight=Pango.Weight.BOLD)
+        iter_text = obj.get_buffer().get_iter_at_offset(0)
+        obj.get_buffer().insert_with_tags(
+            iter_text, comment['nick'] + ': ', nick_tag)
+        iter_text = obj.get_buffer().get_end_iter()
+        obj.get_buffer().insert(iter_text, comment['comment'])
+
         align = Gtk.Alignment.new(xalign=0, yalign=0.5, xscale=0, yscale=0)
         align.add(obj)
         obj.show()

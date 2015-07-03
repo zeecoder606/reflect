@@ -265,9 +265,14 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(self._title_align, 1, row, 5, 1)
         self._title_align.show()
 
+        delete_button = EventIcon(icon_name='delete', pixel_size=BUTTON_SIZE)
+        delete_button.connect('button-press-event', self.__delete_cb)
+        self._grid.attach(delete_button, 6, row, 1, 1)
+        delete_button.show()
+
         ''' Notification that a new comment has been shared. '''
         self.notify_button = EventIcon(icon_name='chat',
-                                        pixel_size=BUTTON_SIZE)
+                                       pixel_size=BUTTON_SIZE)
         self._grid.attach(self.notify_button, 6, row, 1, 1)
         row += 1
 
@@ -892,6 +897,11 @@ class ReflectionGrid(Gtk.EventBox):
         for align in self._comment_aligns:
             align.hide()
         self._new_comment.hide()
+
+    def __delete_cb(self, button, event):
+        self._reflection.activity.delete_item(self._reflection.data['obj_id'])
+        self.hide()
+
 
 class Reflection():
     ''' A class to hold a reflection '''

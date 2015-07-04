@@ -44,6 +44,7 @@ from dbus.service import signal
 from dbus.gobject_service import ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.presence.tubeconn import TubeConnection
+from sugar3.graphics.objectchooser import ObjectChooser
 
 from reflectwindow import ReflectWindow
 from graphics import Graphics, FONT_SIZES
@@ -179,80 +180,89 @@ class ReflectActivity(activity.Activity):
         for dsobj in self.dsobjects:
             if self._found_obj_id(dsobj.object_id):
                 continue  # Already have this object -- TODO: update it
-            self.reflection_data.append({
-                'title': _('Untitled'), 'obj_id': dsobj.object_id})
-            if hasattr(dsobj, 'metadata'):
-                if 'creation_time' in dsobj.metadata:
-                    self.reflection_data[-1]['creation_time'] = \
-                        dsobj.metadata['creation_time']
-                else:
-                    self.reflection_data[-1]['creation_time'] = \
-                        int(time.time())
-                if 'timestamp' in dsobj.metadata:
-                    self.reflection_data[-1]['modification_time'] = \
-                        dsobj.metadata['timestamp']
-                else:
-                    self.reflection_data[-1]['modification_time'] = \
-                        self.reflection_data[-1]['creation_time']
-                if 'activity' in dsobj.metadata:
-                    self.reflection_data[-1]['activities'] = \
-                        [utils.bundle_id_to_icon(dsobj.metadata['activity'])]
-                if 'title' in dsobj.metadata:
-                    self.reflection_data[-1]['title'] = \
-                        dsobj.metadata['title']
-                if 'description' in dsobj.metadata:
-                    self.reflection_data[-1]['content'] = \
-                        [{'text': dsobj.metadata['description']}]
-                else:
-                    self.reflection_data[-1]['content'] = []
-                if 'tags' in dsobj.metadata:
-                    self.reflection_data[-1]['tags'] = []
-                    tags = dsobj.metadata['tags'].split()
-                    for tag in tags:
-                        if tag[0] != '#':
-                            self.reflection_data[-1]['tags'].append('#' + tag)
+            self._add_new_from_journal(dsobj)
+
+    def _add_new_from_journal(self, dsobj):
+        self.reflection_data.append({
+            'title': _('Untitled'), 'obj_id': dsobj.object_id})
+        if hasattr(dsobj, 'metadata'):
+            if 'creation_time' in dsobj.metadata:
+                self.reflection_data[-1]['creation_time'] = \
+                    dsobj.metadata['creation_time']
+            else:
+                self.reflection_data[-1]['creation_time'] = \
+                    int(time.time())
+            if 'timestamp' in dsobj.metadata:
+                self.reflection_data[-1]['modification_time'] = \
+                    dsobj.metadata['timestamp']
+            else:
+                self.reflection_data[-1]['modification_time'] = \
+                    self.reflection_data[-1]['creation_time']
+            if 'activity' in dsobj.metadata:
+                self.reflection_data[-1]['activities'] = \
+                    [utils.bundle_id_to_icon(dsobj.metadata['activity'])]
+            if 'title' in dsobj.metadata:
+                self.reflection_data[-1]['title'] = \
+                    dsobj.metadata['title']
+            if 'description' in dsobj.metadata:
+                self.reflection_data[-1]['content'] = \
+                    [{'text': dsobj.metadata['description']}]
+            else:
+                self.reflection_data[-1]['content'] = []
+            if 'tags' in dsobj.metadata:
+                self.reflection_data[-1]['tags'] = []
+                tags = dsobj.metadata['tags'].split()
+                for tag in tags:
+                    if tag[0] != '#':
+                        self.reflection_data[-1]['tags'].append('#' + tag)
+                    else:
+                        self.reflection_data[-1]['tags'].append(tag)
+            if 'comments' in dsobj.metadata:
+                try:
+                    comments = json.loads(dsobj.metadata['comments'])
+                except:
+                    comments = []
+                self.reflection_data[-1]['comments'] = []
+                for comment in comments:
+                    try:
+                        data = {'nick': comment['from'],
+                                'comment': comment['message']}
+                        if 'icon-color' in comment:
+                            colors = comment['icon-color'].split(',')
+                            darker = 1 - utils.lighter_color(colors)
+                            data['color'] = colors[darker]
                         else:
-                            self.reflection_data[-1]['tags'].append(tag)
-                if 'comments' in dsobj.metadata:
-                    try:
-                        comments = json.loads(dsobj.metadata['comments'])
+                            data['color'] = '#000000'
+                        self.reflection_data[-1]['comments'].append(data)
                     except:
-                        comments = []
-                    self.reflection_data[-1]['comments'] = []
-                    for comment in comments:
-                        try:
-                            data = {'nick': comment['from'],
-                                    'comment': comment['message']}
-                            if 'icon-color' in comment:
-                                colors = comment['icon-color'].split(',')
-                                darker = 1 - utils.lighter_color(colors)
-                                data['color'] = colors[darker]
-                            else:
-                                data['color'] = '#000000'
-                            self.reflection_data[-1]['comments'].append(data)
-                        except:
-                            _logger.debug('could not parse comment %s'
-                                          % comment)
-                if 'mime_type' in dsobj.metadata and \
-                   dsobj.metadata['mime_type'][0:5] == 'image':
-                    new_path = os.path.join(self.tmp_path,
-                                            dsobj.object_id)
-                    try:
-                        shutil.copy(dsobj.file_path, new_path)
-                    except Exception as e:
-                        logging.error("Couldn't copy %s to %s: %s" %
-                                      (dsobj.file_path, new_path, e))
+                        _logger.debug('could not parse comment %s'
+                                      % comment)
+            if 'mime_type' in dsobj.metadata and \
+               dsobj.metadata['mime_type'][0:5] == 'image':
+                new_path = os.path.join(self.tmp_path,
+                                        dsobj.object_id)
+                try:
+                    shutil.copy(dsobj.file_path, new_path)
+                except Exception as e:
+                    logging.error("Couldn't copy %s to %s: %s" %
+                                  (dsobj.file_path, new_path, e))
+                self.reflection_data[-1]['content'].append(
+                    {'image': new_path})
+            elif 'preview' in dsobj.metadata:
+                pixbuf = utils.get_pixbuf_from_journal(dsobj, 300, 225)
+                if pixbuf is not None:
+                    path = os.path.join(self.tmp_path,
+                                        dsobj.object_id + '.png')
+                    utils.save_pixbuf_to_file(pixbuf, path)
                     self.reflection_data[-1]['content'].append(
-                        {'image': new_path})
-                elif 'preview' in dsobj.metadata:
-                    pixbuf = utils.get_pixbuf_from_journal(dsobj, 300, 225)
-                    if pixbuf is not None:
-                        path = os.path.join(self.tmp_path,
-                                            dsobj.object_id + '.png')
-                        utils.save_pixbuf_to_file(pixbuf, path)
-                        self.reflection_data[-1]['content'].append(
-                            {'image': path})
-                self.reflection_data[-1]['stars'] = 0
+                        {'image': path})
+            self.reflection_data[-1]['stars'] = 0
+
+    def delete_item(self, obj_id):
+        for i, obj in enumerate(self.reflection_data):
+            if obj['obj_id'] == obj_id:
+                self.reflection_data[i] = {'obj_id': obj_id, 'deleted': True}
+                return
 
     def busy_cursor(self):
         self.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
@@ -470,19 +480,29 @@ class ReflectActivity(activity.Activity):
         self._paste_button.connect('clicked', self._paste_cb)
         self._paste_button.set_sensitive(False)
 
+        button = ToolButton('list-add')
+        button.set_tooltip(_('Add Item'))
+        button.props.accelerator = '<Ctrl>+'
+        self._toolbox.toolbar.insert(button, -1)
+        button.show()
+        button.connect('clicked', self.__add_item_cb)
+
         self._date_button = RadioToolButton('date-sort', group=None)
+        self._date_button.set_tooltip(_('Sort by Date'))
         self._date_button.connect('clicked', self._date_button_cb)
         self._toolbox.toolbar.insert(self._date_button, -1)
         self._date_button.show()
 
         self._title_button = RadioToolButton('title-sort',
                                              group=self._date_button)
+        self._title_button.set_tooltip(_('Sort by Title'))
         self._title_button.connect('clicked', self._title_button_cb)
         self._toolbox.toolbar.insert(self._title_button, -1)
         self._title_button.show()
 
         self._stars_button = RadioToolButton('stars-sort',
                                              group=self._date_button)
+        self._stars_button.set_tooltip(_('Sort by Favourite'))
         self._stars_button.connect('clicked', self._stars_button_cb)
         self._toolbox.toolbar.insert(self._stars_button, -1)
         self._stars_button.show()
@@ -503,6 +523,7 @@ class ReflectActivity(activity.Activity):
         tool_item.show()
 
         self._search_button = ToolButton('dialog-ok')
+        self._search_button.set_tooltip(_('Search by Tags'))
         self._search_button.connect('clicked', self._search_button_cb)
         self._toolbox.toolbar.insert(self._search_button, -1)
         self._search_button.show()
@@ -639,6 +660,26 @@ class ReflectActivity(activity.Activity):
     def _fullscreen_cb(self, button):
         ''' Hide the Sugar toolbars. '''
         self.fullscreen()
+
+    def __add_item_cb(self, button):
+        try:
+            chooser = ObjectChooser(parent=self, what_filter=None)
+        except TypeError:
+            chooser = ObjectChooser(
+                None, self._reflection.activity,
+                Gtk.DialogFlags.MODAL |
+                Gtk.DialogFlags.DESTROY_WITH_PARENT)
+
+        try:
+            result = chooser.run()
+            if result == Gtk.ResponseType.ACCEPT:
+                jobject = chooser.get_selected_object()
+                if jobject:
+                    self._add_new_from_journal(jobject)
+                    self.reload_data(self.reflection_data)
+        finally:
+            chooser.destroy()
+            del chooser
 
     def _set_scroll_policy(self):
         if Gdk.Screen.width() < Gdk.Screen.height():

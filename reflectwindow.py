@@ -198,8 +198,7 @@ class ReflectWindow(Gtk.Alignment):
         entry.set_text('')
         if self._activity.sharing:
             data = json.dumps(self._activity.reflection_data[0])
-            self._activity.send_event(
-                '%s|%s' % (NEW_REFLECTION_CMD, data))
+            self._activity.send_event(NEW_REFLECTION_CMD, {"data": data})
 
     def add_new_reflection(self, data):
         reflection_data = json.loads(data)
@@ -466,8 +465,8 @@ class ReflectionGrid(Gtk.EventBox):
     def _star_button_cb(self, button, event, n):
         self.update_stars(n)
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(
-                '%s|%s|%d' % (STAR_CMD, self._reflection.data['obj_id'], n))
+            self._reflection.activity.send_event(STAR_CMD,
+                {"obj_id": self._reflection.data["obj_id"], "stars": n})
 
     def update_stars(self, n):
         if 'stars' in self._reflection.data:
@@ -550,8 +549,9 @@ class ReflectionGrid(Gtk.EventBox):
         text_buffer.set_text(label.replace('\12', ''))
         if self._reflection.activity.sharing:
             data = json.dumps(self._reflection.data['tags'])
-            self._reflection.activity.send_event(
-                '%s|%s|%s' % (TAG_CMD, self._reflection.data['obj_id'], data))
+            self._reflection.activity.send_event(TAG_CMD,
+                {"obj_id": self._refelection.data["ob_id"],
+                 "reflection": data})
         self._reflection.set_modification_time()
 
         # Update journal entry
@@ -580,9 +580,9 @@ class ReflectionGrid(Gtk.EventBox):
         text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
         self._reflection.data['title'] = text
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(
-                '%s|%s|%s' % (TITLE_CMD, self._reflection.data['obj_id'],
-                              text))
+            self._reflection.activity.send_event(TITLE_CMD,
+                {"obj_id": self._reflection.data["obj_id"],
+                 "title": text})
         self._reflection.set_modification_time()
 
         # Update journal entry
@@ -618,12 +618,10 @@ class ReflectionGrid(Gtk.EventBox):
         self.add_new_comment(data)
         # Send the comment
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(
-                '%s|%s|%s|%s|%s' % (COMMENT_CMD,
-                                    self._reflection.data['obj_id'],
-                                    data['nick'],
-                                    data['color'],
-                                    data['comment']))
+            send_data = data.copy()
+            send_data["obj_id"] = self._reflection.data["obj_id"]
+            self._reflection.activity.send_event(COMMENT_CMD, send_data)
+
         entry.set_text('')
 
         # Update journal entry
@@ -672,9 +670,9 @@ class ReflectionGrid(Gtk.EventBox):
         self.add_new_reflection(text)
         # Send the reflection
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(
-                '%s|%s|%s' % (REFLECTION_CMD, self._reflection.data['obj_id'],
-                              text))
+            self._reflection.activity.send_event(REFLECTION_CMD,
+                {"obj_id": self._reflection.data["obj_id"],
+                 "reflection": text}
         entry.set_text('')
 
     def add_new_reflection(self, text):
@@ -731,10 +729,9 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection.activity.hide_overlay_area()
         self.add_activity(bundle_id)
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(
-                '%s|%s|%s' % (ACTIVITY_CMD,
-                              self._reflection.data['obj_id'],
-                              bundle_id))
+            self._reflection.activity.send_event(ACTIVITY_CMD,
+                {"obj_id": self._reflection.data["obj_id"],
+                 "bundle_id": bundle_id}
 
     def add_activity(self, bundle_id):
         ''' Add activity from sharer '''
@@ -829,14 +826,12 @@ class ReflectionGrid(Gtk.EventBox):
                 pixbuf = self.add_new_picture(jobject.file_path)
                 self._reflection.set_modification_time()
                 if self._reflection.activity.sharing and pixbuf is not None:
-                    self._reflection.activity.send_event(
-                        '%s|%s|%s' % (PICTURE_CMD,
-                                      os.path.basename(jobject.file_path),
-                                      utils.pixbuf_to_base64(pixbuf)))
-                    self._reflection.activity.send_event(
-                        '%s|%s|%s' % (IMAGE_REFLECTION_CMD,
-                                      self._reflection.data['obj_id'],
-                                      os.path.basename(jobject.file_path)))
+                    self._reflection.activity.send_event(PICTURE_CMD,
+                        {"basename": os.path.basename(jobject.file_path),
+                         "data": utils.pixbuf_to_base64(pixbuf)}
+                    self._reflection.activity.send_event(IMAGE_REFLECTION_CMD,
+                        {"obj_id": self._reflection.data["obj_id"],
+                         "basename": os.path.basename(jobject.file_path)}
 
         self._reflection.activity.reset_cursor()
 
@@ -982,3 +977,4 @@ class Reflection():
             self.graphics.hide()
         else:
             self.graphics.show()
+

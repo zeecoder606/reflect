@@ -43,8 +43,13 @@ import dbus
 from dbus.service import signal
 from dbus.gobject_service import ExportedGObject
 from sugar3.presence import presenceservice
-from sugar3.presence.tubeconn import TubeConnection
 from sugar3.graphics.objectchooser import ObjectChooser
+
+try:
+    from sugar3.presence.wrapper import CollabWrapper
+except ImportError:
+    from textchannelwrapper import CollabWrapper
+
 
 from reflectwindow import ReflectWindow
 from graphics import Graphics, FONT_SIZES
@@ -780,24 +785,24 @@ class ReflectActivity(activity.Activity):
                 self.tubes_chan[
                     telepathy.CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
 
-            tube_conn = TubeConnection(
-                self.conn, self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES], id,
-                group_iface=self.text_chan[telepathy.CHANNEL_INTERFACE_GROUP])
-
-            self.chattube = ChatTube(tube_conn, self.initiating,
-                                     self.event_received_cb)
+            self.collab = CollabWrapper(self)
+            self.collab.message.connect(self.event_received_cb)
+            self.collab.setup()
 
             if self._waiting_for_reflections:
-                self.send_event(JOIN_CMD)
+                self.send_event(JOIN_CMD, {})
                 self._joined_alert = Alert()
                 self._joined_alert.props.title = _('Please wait')
                 self._joined_alert.props.msg = _('Requesting reflections...')
                 self.add_alert(self._joined_alert)
 
-    def event_received_cb(self, text):
+    def event_received_cb(self, collab, buddy, msg):
         ''' Data is passed as tuples: cmd:text '''
-        logging.debug(text[0])
-        if text[0] == JOIN_CMD:
+        command = msg.get("command")
+        payload = msg.get("payload")
+        logging.debug(command)
+
+        if command == JOIN_CMD:
             # Sharer needs to send reflections database to joiners.
             if self.initiating:
                 # Send pictures first.
@@ -809,18 +814,16 @@ class ReflectActivity(activity.Activity):
                                     content['image'], 120, 90)
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
-                                self.send_event(
-                                    '%s|%s|%s' %
-                                    (PICTURE_CMD,
-                                     os.path.basename(content['image']),
-                                     data))
+                                self.send_event(PICTURE_CMD,
+                                    {"image": os.path.basename(content['image']),
+                                     "data": data})
                 data = json.dumps(self.reflection_data)
-                self.send_event(SHARE_CMD + data)
-        elif text[0] == NEW_REFLECTION_CMD:
-            cmd, data = text.split('|', 2)
-            self._reflect_window.add_new_reflection(data)
-        elif text[0] == TITLE_CMD:
-            cmd, obj_id, title = text.split('|', 3)
+                self.send_event(SHARE_CMD, {"data": data})
+        elif command == NEW_REFLECTION_CMD:
+            self._reflect_window.add_new_reflection(payload)
+        elif command == TITLE_CMD:
+            obj_id = payload.get("obj_id")
+            title = payload.get("title")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -828,8 +831,9 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == TAG_CMD:
-            cmd, obj_id, data = text.split('|', 3)
+        elif command == TAG_CMD:
+            obj_id = payload.get("obj_id")
+            data = payload.get("data")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -837,8 +841,9 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == ACTIVITY_CMD:
-            cmd, obj_id, bundle_id = text.split('|', 3)
+        elif command == ACTIVITY_CMD:
+            obj_id = payload.get("obj_id")
+            bundle_id = payload.get("bundle_id")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -846,8 +851,9 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == STAR_CMD:
-            cmd, obj_id, stars = text.split('|', 3)
+        elif command == STAR_CMD:
+            obj_id = payload.get("obj_id")
+            stars = payload.get("stars")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -855,10 +861,13 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == COMMENT_CMD:
+        elif command == COMMENT_CMD:
             found_the_object = False
             # Receive a comment and associated reflection ID
-            cmd, obj_id, nick, color, comment = text.split('|', 5)
+            obj_id = payload.get("obj_id")
+            nick = payload.get("nick")
+            color = payload.get("color")
+            comment = payload.get("comment")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -870,10 +879,11 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == REFLECTION_CMD:
+        elif command == REFLECTION_CMD:
             found_the_object = False
             # Receive a reflection and associated reflection ID
-            cmd, obj_id, reflection = text.split('|', 3)
+            obj_id = payload.get("obj_id")
+            reflection = payload.get("reflection")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -884,10 +894,11 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == IMAGE_REFLECTION_CMD:
+        elif command == IMAGE_REFLECTION_CMD:
             found_the_object = False
             # Receive a picture reflection and associated reflection ID
-            cmd, obj_id, basename = text.split('|', 3)
+            obj_id = payload.get("obj_id")
+            basename = payload.get("basename")
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
@@ -900,15 +911,16 @@ class ReflectActivity(activity.Activity):
                     break
             if not found_the_object:
                 logging.error('Could not find obj_id %s' % obj_id)
-        elif text[0] == PICTURE_CMD:
+        elif command == PICTURE_CMD:
             # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
-            cmd, basename, data = text.split('|', 3)
+            basename = payload.get("basename")
+            data = payload.get("data")
             utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
-        elif text[0] == SHARE_CMD:
+        elif command == SHARE_CMD:
             # Joiner needs to load reflection database.
             if not self.initiating:
                 # Note that pictures should be received.
-                self.reflection_data = json.loads(text[1:])
+                self.reflection_data = payload
                 self._reflect_window.load(self.reflection_data)
                 self._waiting_for_reflections = False
                 self.reset_cursor()
@@ -916,10 +928,11 @@ class ReflectActivity(activity.Activity):
                     self.remove_alert(self._joined_alert)
                     self._joined_alert = None
 
-    def send_event(self, entry):
+    def send_event(self, command, data):
         ''' Send event through the tube. '''
-        if hasattr(self, 'chattube') and self.chattube is not None:
-            self.chattube.SendText(entry)
+        if hasattr(self, 'collab') and self.collab is not None:
+            data["command"] = command
+            self.collab.post(data)
 
 
 class ChatTube(ExportedGObject):

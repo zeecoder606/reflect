@@ -672,7 +672,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(REFLECTION_CMD,
                 {"obj_id": self._reflection.data["obj_id"],
-                 "reflection": text}
+                 "reflection": text})
         entry.set_text('')
 
     def add_new_reflection(self, text):
@@ -731,7 +731,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._reflection.activity.sharing:
             self._reflection.activity.send_event(ACTIVITY_CMD,
                 {"obj_id": self._reflection.data["obj_id"],
-                 "bundle_id": bundle_id}
+                 "bundle_id": bundle_id})
 
     def add_activity(self, bundle_id):
         ''' Add activity from sharer '''
@@ -828,10 +828,10 @@ class ReflectionGrid(Gtk.EventBox):
                 if self._reflection.activity.sharing and pixbuf is not None:
                     self._reflection.activity.send_event(PICTURE_CMD,
                         {"basename": os.path.basename(jobject.file_path),
-                         "data": utils.pixbuf_to_base64(pixbuf)}
+                         "data": utils.pixbuf_to_base64(pixbuf)})
                     self._reflection.activity.send_event(IMAGE_REFLECTION_CMD,
                         {"obj_id": self._reflection.data["obj_id"],
-                         "basename": os.path.basename(jobject.file_path)}
+                         "basename": os.path.basename(jobject.file_path)})
 
         self._reflection.activity.reset_cursor()
 

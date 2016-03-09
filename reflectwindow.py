@@ -94,7 +94,9 @@ class ReflectWindow(Gtk.Alignment):
 
         for item in reflection_data:
             if item.get('deleted'):
+                reflection_data.remove(item)
                 continue
+
             reflection = Reflection(self._activity, item)
             reflection.set_obj_id()
             self._reflections_grid.attach(

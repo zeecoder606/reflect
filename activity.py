@@ -266,7 +266,7 @@ class ReflectActivity(activity.Activity):
     def delete_item(self, obj_id):
         for i, obj in enumerate(self.reflection_data):
             if obj['obj_id'] == obj_id:
-                self.reflection_data[i] = {'obj_id': obj_id, 'deleted': True}
+                self.reflection_data.remove(self.reflection_data[i])
                 return
 
     def busy_cursor(self):

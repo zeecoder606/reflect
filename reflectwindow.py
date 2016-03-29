@@ -245,6 +245,7 @@ class ReflectionGrid(Gtk.EventBox):
                                         pixel_size=BUTTON_SIZE)
         self._collapse_id = self._expand_button.connect('button-press-event',
                                            self._expand_cb)
+        self._expand_button.set_tooltip(_('Expand'))
         self._grid.attach(self._expand_button, 0, row, 1, 1)
         self._expand_button.show()
 
@@ -269,6 +270,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._title_align.show()
 
         delete_button = EventIcon(icon_name='delete', pixel_size=BUTTON_SIZE)
+        delete_button.set_tooltip(_('Delete'))
         delete_button.connect('button-press-event', self.__delete_cb)
         self._grid.attach(delete_button, 6, row, 1, 1)
         delete_button.show()
@@ -345,6 +347,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._reflection.activity.initiating:
             self._new_activity = EventIcon(icon_name='add-item',
                                            pixel_size=BUTTON_SIZE)
+            self._new_activity.set_tooltip(_('Add new activity'))
             self._new_activity.connect('button-press-event',
                                        self._activity_button_cb)
             self._grid.attach(self._new_activity, 6, row, 1, 1)
@@ -427,6 +430,7 @@ class ReflectionGrid(Gtk.EventBox):
             self._content_we_always_show.append(self._new_entry)
             self._new_image = EventIcon(icon_name='add-picture',
                                         pixel_size=BUTTON_SIZE)
+            self._new_image.set_tooltip(_('Add new image'))
             self._new_image.connect('button-press-event', self._image_button_cb)
             self._grid.attach(self._new_image, 6, row, 1, 1)
             self._content_we_always_show.append(self._new_image)
@@ -867,6 +871,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._collapse_id is not None:
             button.disconnect(self._collapse_id)
         button.set_icon_name('collapse')
+        button.set_tooltip(_('Collapse'))
         self._collapse_id = button.connect('button-press-event',
                                            self._collapse_cb)
         self._tag_align.show()
@@ -884,6 +889,7 @@ class ReflectionGrid(Gtk.EventBox):
         if self._collapse_id is not None:
             button.disconnect(self._collapse_id)
         button.set_icon_name('expand')
+        button.set_tooltip(_('Expand'))
         self._collapse_id = button.connect('button-press-event',
                                            self._expand_cb)
         self._tag_align.hide()

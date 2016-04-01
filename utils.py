@@ -128,30 +128,16 @@ def base64_to_pixbuf(base64data, width=120, height=90):
 
 def _find_bundles():
     global bundle_icons
+    info_files = []
 
-    info_files = glob.glob(os.path.join(os.path.expanduser('~'),
-                                        'Activities',
-                                        '*.activity',
-                                        'activity',
-                                        'activity.info'))
-    for path in info_files:
-        fd = open(path, 'rb')
-        cp = ConfigParser()
-        cp.readfp(fd)
-        section = 'Activity'
-        if cp.has_option(section, 'bundle_id'):
-            bundle_id = cp.get(section, 'bundle_id')
-        else:
-            continue
-        if cp.has_option(section, 'icon'):
-            icon = cp.get(section, 'icon')
-        dirname = os.path.dirname(path)
-        bundle_icons[bundle_id] = os.path.join(dirname, icon + '.svg')
+    for root in GLib.get_system_data_dirs():
+        info_files += glob.glob(os.path.join(root,
+                                             'sugar',
+                                             'activities',
+                                             '*.activity',
+                                             'activity',
+                                             'activity.info'))
 
-    info_files = glob.glob(os.path.join('/usr/share/sugar/activities'
-                                        '*.activity',
-                                        'activity',
-                                        'activity.info'))
     for path in info_files:
         fd = open(path, 'rb')
         cp = ConfigParser()
